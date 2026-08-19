@@ -186,6 +186,19 @@ def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 # Filtering
 # ---------------------------------------------------------------------------
 
+def split_multiselect_counts(series: pd.Series) -> pd.Series:
+    """
+    Some fields (further_support_required, support_provided_by_da,
+    types_of_waste_produced_by_the_enterprise, water_sources) allow multiple
+    comma-joined selections per record, e.g. "financial,marketing". Splits
+    those into individual category counts rather than treating each unique
+    combination as its own category.
+    """
+    exploded = series.dropna().astype(str).str.split(",").explode().str.strip()
+    exploded = exploded[exploded.ne("") & exploded.ne("na")]
+    return exploded.value_counts()
+
+
 def apply_filters(
     df: pd.DataFrame,
     districts: list[str] | None = None,
