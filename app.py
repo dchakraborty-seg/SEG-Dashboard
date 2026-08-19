@@ -1,5 +1,5 @@
 """
-
+app.py
 ------
 WEE / M&E Monitoring Dashboard — Streamlit + Plotly
 
@@ -26,7 +26,7 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
-from data_utils import load_data, apply_filters, DATE_COL, LOAN_SOURCE_COLS
+from data_utils import load_data, apply_filters, split_multiselect_counts, DATE_COL, LOAN_SOURCE_COLS
 from kpi_utils import compute_kpis, format_indian_number
 from targets_utils import target_vs_achieved, METRIC_LABELS
 
@@ -143,7 +143,7 @@ fdf = apply_filters(
 st.sidebar.caption(f"**{len(fdf):,}** records match current filters")
 
 st.title("Women's Economic Empowerment — M&E Dashboard")
-st.caption("Executive progress, financial, sector, geographic and temporal views. "
+st.caption("Executive progress, financial, sector, geographic, temporal, and sustainability/support views. "
            "Use the sidebar to filter; all sections below respond to the same filter set.")
 
 # ---------------------------------------------------------------------------
@@ -232,6 +232,31 @@ if {"total_investment", "total_loan_amount", "sector1"}.issubset(fdf.columns):
         )
         st.plotly_chart(fig, width='stretch')
 
+st.subheader("Loan-to-Savings Ratio")
+if {"total_loan_amount", "individual_saving_invested"}.issubset(fdf.columns):
+    ratio_dim = st.radio("Break down by", ["sector1", "district1"], horizontal=True,
+                          format_func=lambda x: "Sector" if x == "sector1" else "District",
+                          key="ratio_dim")
+    if ratio_dim in fdf.columns:
+        ratio_agg = fdf.groupby(ratio_dim).agg(
+            loan=("total_loan_amount", "sum"),
+            savings=("individual_saving_invested", "sum"),
+        ).reset_index()
+        ratio_agg = ratio_agg[ratio_agg["savings"] > 0]
+        ratio_agg["ratio"] = ratio_agg["loan"] / ratio_agg["savings"]
+        ratio_agg = ratio_agg.sort_values("ratio", ascending=True)
+        fig = px.bar(
+            ratio_agg, x="ratio", y=ratio_dim, orientation="h", template=PLOTLY_TEMPLATE,
+            color_discrete_sequence=["#BC4749"],
+            labels={"ratio": "Loan ÷ Savings", ratio_dim: "Sector" if ratio_dim == "sector1" else "District"},
+        )
+        fig.add_vline(x=1, line_dash="dash", line_color="gray",
+                       annotation_text="1:1 (loan = savings)", annotation_position="top")
+        st.plotly_chart(fig, width='stretch')
+        st.caption("A ratio above 1 means loan mobilization outpaces personal savings invested in that "
+                   "group — useful as a rough proxy for reliance on external credit vs. self-funding. "
+                   "Groups with zero recorded savings are excluded to avoid a divide-by-zero distortion.")
+
 st.divider()
 
 # ---------------------------------------------------------------------------
@@ -246,10 +271,17 @@ with c1:
     if "sector1" in fdf.columns:
         counts = fdf["sector1"].value_counts().reset_index()
         counts.columns = ["sector1", "count"]
-        fig = px.bar(counts, x="count", y="sector1", orientation="h", template=PLOTLY_TEMPLATE,
-                     color="sector1", color_discrete_sequence=COLOR_SEQ)
-        fig.update_layout(showlegend=False, yaxis_title="", xaxis_title="Entrepreneurs")
-        st.plotly_chart(fig, width='stretch')
+        tab_bar, tab_pie = st.tabs(["Bar", "Pie"])
+        with tab_bar:
+            fig = px.bar(counts, x="count", y="sector1", orientation="h", template=PLOTLY_TEMPLATE,
+                         color="sector1", color_discrete_sequence=COLOR_SEQ)
+            fig.update_layout(showlegend=False, yaxis_title="", xaxis_title="Entrepreneurs")
+            st.plotly_chart(fig, width='stretch')
+        with tab_pie:
+            fig = px.pie(counts, names="sector1", values="count", template=PLOTLY_TEMPLATE,
+                         color_discrete_sequence=COLOR_SEQ, hole=0.35)
+            fig.update_traces(textinfo="percent+label")
+            st.plotly_chart(fig, width='stretch')
 
 with c2:
     st.subheader("Top 10 enterprise types (overall)")
@@ -290,6 +322,20 @@ with c4:
                      template=PLOTLY_TEMPLATE, color_discrete_sequence=COLOR_SEQ)
         fig.update_layout(xaxis_title="", yaxis_title="Entrepreneurs")
         st.plotly_chart(fig, width='stretch')
+
+st.subheader("District × Sector heatmap")
+if {"district1", "sector1"}.issubset(fdf.columns):
+    pivot = pd.crosstab(fdf["district1"], fdf["sector1"])
+    if pivot.size:
+        fig = px.imshow(
+            pivot, template=PLOTLY_TEMPLATE, color_continuous_scale="Blues", aspect="auto",
+            labels=dict(x="Sector", y="District", color="Entrepreneurs"),
+        )
+        fig.update_layout(xaxis_tickangle=-35)
+        st.plotly_chart(fig, width='stretch')
+        st.caption("Darker cells = more entrepreneurs in that district-sector combination. "
+                   "Useful for spotting which districts are concentrated in a narrow set of sectors "
+                   "vs. diversified.")
 
 st.divider()
 
@@ -418,6 +464,16 @@ if "financial_year" in tdf.columns:
     )
     st.plotly_chart(fig, width='stretch')
 
+st.subheader("Enterprise growth — new vs. existing, over time")
+if {"onboard_month", "new_or_existing"}.issubset(tdf.columns):
+    growth = tdf.groupby(["onboard_month", "new_or_existing"]).size().reset_index(name="count")
+    fig = px.area(
+        growth, x="onboard_month", y="count", color="new_or_existing", template=PLOTLY_TEMPLATE,
+        color_discrete_sequence=["#3A6EA5", "#4C956C"],
+        labels={"onboard_month": "Month", "count": "Entrepreneurs", "new_or_existing": "Enterprise Status"},
+    )
+    st.plotly_chart(fig, width='stretch')
+
 st.subheader("Current FY drill-down")
 current_fy_opts = sorted(tdf["financial_year"].dropna().unique()) if "financial_year" in tdf.columns else []
 if current_fy_opts:
@@ -480,3 +536,111 @@ if "onboard_month" in tdf.columns:
                "Toggle raw values below.")
     with st.expander("Show raw monthly values"):
         st.dataframe(monthly, width='stretch')
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# 7. Section 6 — Sustainability & Support
+# ---------------------------------------------------------------------------
+
+st.header("6 · Sustainability & Support")
+
+# --- Green energy adoption --------------------------------------------------
+st.subheader("Green Energy Adoption")
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    st.caption("Solar adoption")
+    if "are_you_using_solar_electricity" in fdf.columns:
+        solar_counts = fdf["are_you_using_solar_electricity"].value_counts().reset_index()
+        solar_counts.columns = ["status", "count"]
+        fig = px.pie(solar_counts, names="status", values="count", template=PLOTLY_TEMPLATE,
+                     color_discrete_sequence=["#4C956C", "#B7C4CF"], hole=0.4)
+        fig.update_traces(textinfo="percent+label")
+        st.plotly_chart(fig, width='stretch')
+
+with c2:
+    st.caption("Solar adoption by district")
+    if {"are_you_using_solar_electricity", "district1"}.issubset(fdf.columns):
+        solar_by_d = fdf.groupby("district1")["are_you_using_solar_electricity"].apply(
+            lambda s: (s == "yes").mean() * 100
+        ).reset_index(name="solar_pct").sort_values("solar_pct")
+        fig = px.bar(solar_by_d, x="solar_pct", y="district1", orientation="h",
+                     template=PLOTLY_TEMPLATE, color_discrete_sequence=["#E0A458"])
+        fig.update_layout(yaxis_title="", xaxis_title="% using solar")
+        st.plotly_chart(fig, width='stretch')
+
+with c3:
+    st.caption("Solar panel capacity (kW) — among adopters")
+    if "solar_panel_capacity" in fdf.columns:
+        cap = fdf.loc[fdf["solar_panel_capacity"] > 0, "solar_panel_capacity"].dropna()
+        if len(cap):
+            fig = px.histogram(cap, template=PLOTLY_TEMPLATE, color_discrete_sequence=["#3A6EA5"],
+                               labels={"value": "Capacity (kW)"})
+            fig.update_layout(showlegend=False, yaxis_title="Enterprises")
+            st.plotly_chart(fig, width='stretch')
+        else:
+            st.caption("No solar capacity data for current filter selection.")
+
+# --- Waste & water -----------------------------------------------------------
+st.subheader("Waste & Water")
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    st.caption("Waste treatment status")
+    if "do_you_treat_your_waste" in fdf.columns:
+        treat_counts = fdf["do_you_treat_your_waste"].value_counts().reset_index()
+        treat_counts.columns = ["status", "count"]
+        fig = px.pie(treat_counts, names="status", values="count", template=PLOTLY_TEMPLATE,
+                     color_discrete_sequence=["#4C956C", "#BC4749"], hole=0.4)
+        fig.update_traces(textinfo="percent+label")
+        st.plotly_chart(fig, width='stretch')
+
+with c2:
+    st.caption("Water reuse")
+    if "do_you_reuse_your_water" in fdf.columns:
+        reuse_counts = fdf["do_you_reuse_your_water"].value_counts().reset_index()
+        reuse_counts.columns = ["status", "count"]
+        fig = px.pie(reuse_counts, names="status", values="count", template=PLOTLY_TEMPLATE,
+                     color_discrete_sequence=["#3A6EA5", "#B7C4CF"], hole=0.4)
+        fig.update_traces(textinfo="percent+label")
+        st.plotly_chart(fig, width='stretch')
+
+with c3:
+    st.caption("Water sources used")
+    if "water_sources" in fdf.columns:
+        src_counts = split_multiselect_counts(fdf["water_sources"]).head(8).reset_index()
+        src_counts.columns = ["source", "count"]
+        fig = px.bar(src_counts, x="count", y="source", orientation="h", template=PLOTLY_TEMPLATE,
+                     color_discrete_sequence=["#3A6EA5"])
+        fig.update_layout(yaxis={"categoryorder": "total ascending"}, yaxis_title="", xaxis_title="Enterprises")
+        st.plotly_chart(fig, width='stretch')
+
+st.caption("Waste and water fields are sparsely filled in the current extract — treat these as "
+           "directional, not comprehensive, until more enterprises report on this section.")
+
+# --- Support needs vs. support provided --------------------------------------
+st.subheader("Support Needs vs. Support Provided")
+if {"further_support_required", "support_provided_by_da"}.issubset(fdf.columns):
+    needed = split_multiselect_counts(fdf["further_support_required"]).rename("Further support required")
+    provided = split_multiselect_counts(fdf["support_provided_by_da"]).rename("Support already provided")
+    gap = pd.concat([needed, provided], axis=1).fillna(0).reset_index().rename(columns={"index": "category"})
+    gap = gap.sort_values("Further support required", ascending=True)
+
+    fig = go.Figure()
+    fig.add_bar(y=gap["category"], x=gap["Further support required"], name="Further support required",
+                orientation="h", marker_color="#BC4749")
+    fig.add_bar(y=gap["category"], x=gap["Support already provided"], name="Support already provided",
+                orientation="h", marker_color="#4C956C")
+    fig.update_layout(barmode="group", template=PLOTLY_TEMPLATE, xaxis_title="Mentions",
+                       yaxis_title="", legend=dict(orientation="h", y=1.1))
+    st.plotly_chart(fig, width='stretch')
+    st.caption("Categories are split out of multi-select responses (e.g. 'financial,marketing' counts "
+               "toward both Financial and Marketing) — bars are mention counts, not unique entrepreneurs, "
+               "so they won't sum to the total record count.")
+
+    with st.expander("Most common specific support requests (free text)"):
+        if "detail_of_support_required" in fdf.columns:
+            detail = fdf["detail_of_support_required"].dropna().value_counts().head(15).reset_index()
+            detail.columns = ["Request", "Mentions"]
+            st.dataframe(detail, width='stretch', hide_index=True)
