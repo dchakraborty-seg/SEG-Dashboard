@@ -61,7 +61,7 @@ GREEN    = "#00A758"   # confirmed / positive
 # legible in grayscale print because the ramp also varies in lightness.
 BRAND_COLORWAY = [DEEP, CYAN, NAVY, SKY, AMBER, GREEN, CORAL, "#8C9BA8"]
 
-DISPLAY_FONT = "'Source Serif 4', Georgia, serif"
+DISPLAY_FONT = "'Inter', 'Helvetica Neue', Arial, sans-serif"
 BODY_FONT = "'Inter', 'Helvetica Neue', Arial, sans-serif"
 MONO_FONT = "'Inter', 'Helvetica Neue', Arial, sans-serif"   # tabular figures
 
@@ -122,11 +122,13 @@ def section(number: str, title: str, standfirst: str = ""):
 def inject_theme():
     st.markdown(f"""
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         html, body, [class*="css"] {{ font-family: {BODY_FONT}; color: {INK}; }}
         .stApp {{ background-color: {PAPER}; }}
-        .block-container {{ padding-top: 2.2rem; max-width: 1500px; }}
+        .block-container {{ padding-top: 1.2rem; padding-bottom: 2rem; max-width: 1560px; }}
+        [data-testid="stVerticalBlock"] {{ gap: 0.7rem; }}
+        [data-testid="stHorizontalBlock"] {{ gap: 0.9rem; align-items: stretch; }}
 
         /* ---- Typography ------------------------------------------------ */
         h1, h2, h3 {{ font-family: {BODY_FONT} !important; color: {DEEP} !important;
@@ -143,7 +145,7 @@ def inject_theme():
         /* ---- Section rule ---------------------------------------------- */
         .mck-section {{
             display: flex; align-items: baseline; gap: 0.9rem;
-            margin: 2.6rem 0 1.1rem 0; padding-top: 0.9rem;
+            margin: 2.1rem 0 0.9rem 0; padding-top: 0.7rem;
             border-top: 2px solid {DEEP};
         }}
         .mck-section-num {{
@@ -152,8 +154,8 @@ def inject_theme():
             font-variant-numeric: tabular-nums;
         }}
         .mck-section-title {{
-            font-family: {DISPLAY_FONT}; font-size: 1.35rem; font-weight: 600;
-            color: {DEEP}; line-height: 1.2;
+            font-family: {BODY_FONT}; font-size: 1.12rem; font-weight: 700;
+            color: {DEEP}; line-height: 1.2; letter-spacing: -0.02em;
         }}
         .mck-section-sub {{
             font-size: 0.82rem; color: {MUTED}; margin-top: 0.2rem; max-width: 78ch;
@@ -223,7 +225,17 @@ def inject_theme():
             font-size: 1.7rem !important; line-height: 1.15; margin-top: 0.15rem;
         }}
         div[data-testid="stMetricDelta"] {{
-            font-size: 0.74rem !important; font-weight: 500 !important; color: {MUTED} !important;
+            font-size: 0.72rem !important; font-weight: 500 !important;
+            color: {MUTED} !important; background: transparent !important;
+            padding: 0 !important; margin-top: 0.15rem;
+        }}
+        div[data-testid="stMetricDelta"] * {{
+            background: transparent !important; color: {MUTED} !important;
+        }}
+        /* equal-height tiles regardless of whether a delta line is present */
+        div[data-testid="stColumn"] div[data-testid="stMetric"] {{
+            height: 100%; min-height: 116px;
+            display: flex; flex-direction: column; justify-content: flex-start;
         }}
         div[data-testid="stMetricDelta"] svg {{ display: none; }}
 
@@ -259,14 +271,29 @@ def inject_theme():
             color: {MUTED} !important; font-size: 0.76rem !important; line-height: 1.5;
         }}
         hr {{ border-color: {LINE} !important; }}
-        div[data-testid="stAlert"] {{ border-radius: 0; border-left-width: 3px; }}
+        div[data-testid="stAlert"] {{
+            border-radius: 0 !important; background: {CARD} !important;
+            border: 1px solid {LINE} !important; border-left: 3px solid {CYAN} !important;
+            box-shadow: none !important; padding: 0.65rem 0.9rem !important;
+        }}
+        div[data-testid="stAlert"] * {{
+            color: {INK} !important; font-size: 0.79rem !important; fill: {MUTED} !important;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="stAlert"] {{
+            background: rgba(255,255,255,0.05) !important;
+            border: 1px solid rgba(255,255,255,0.14) !important;
+            border-left: 3px solid {CYAN} !important;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="stAlert"] * {{
+            color: #D6E1EA !important;
+        }}
 
         /* ---- Masthead ------------------------------------------------------
            Flat deep-navy band with a cyan keyline and a metadata strip —
            reads as a report cover page, not a gradient hero card. */
         .mck-masthead {{
             background: {DEEP};
-            padding: 1.7rem 2rem 1.4rem 2rem;
+            padding: 1.3rem 1.8rem 1.1rem 1.8rem;
             margin-bottom: 0.4rem;
             border-bottom: 3px solid {CYAN};
             border-radius: 0;
@@ -277,9 +304,9 @@ def inject_theme():
         }}
         .mck-masthead h1 {{
             font-family: {DISPLAY_FONT} !important; color: #FFFFFF !important;
-            font-size: 1.95rem !important; font-weight: 600 !important;
-            margin: 0 0 0.45rem 0 !important; line-height: 1.18;
-            letter-spacing: -0.01em; border-bottom: none !important;
+            font-size: 1.62rem !important; font-weight: 700 !important;
+            margin: 0 0 0.4rem 0 !important; line-height: 1.15;
+            letter-spacing: -0.035em; border-bottom: none !important;
         }}
         .mck-masthead p {{
             color: #A9BDCC !important; font-family: {BODY_FONT};
@@ -288,9 +315,10 @@ def inject_theme():
         .mck-metastrip {{
             display: flex; gap: 2.2rem; flex-wrap: wrap;
             background: {CARD}; border: 1px solid {LINE}; border-top: none;
-            padding: 0.7rem 2rem; margin-bottom: 1.6rem;
+            padding: 0.6rem 1.8rem; margin-bottom: 0.6rem;
         }}
-        .mck-metastrip div {{ font-size: 0.72rem; color: {MUTED}; letter-spacing: 0.02em; }}
+        .mck-metastrip div {{ font-size: 0.68rem; color: {MUTED}; letter-spacing: 0.06em;
+                              text-transform: uppercase; font-weight: 600; }}
         .mck-metastrip b {{
             display: block; color: {DEEP}; font-size: 0.86rem; font-weight: 600;
             font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
