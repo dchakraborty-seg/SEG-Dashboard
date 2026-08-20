@@ -1,7 +1,7 @@
 """
 app.py
 ------
-WEE / M&E Monitoring Dashboard — Streamlit + Plotly
+SEG / M&E Monitoring Dashboard — Streamlit + Plotly
 
 Run with:
     streamlit run app.py
@@ -232,8 +232,8 @@ inject_theme()
 # ---------------------------------------------------------------------------
 
 st.sidebar.markdown('<div style="font-size:.62rem;font-weight:800;letter-spacing:.16em;color:#18B6F2;text-transform:uppercase;margin-bottom:.35rem;">SEG · M&E</div>', unsafe_allow_html=True)
-st.sidebar.title("WEE Dashboard")
-st.sidebar.caption("Women’s Economic Empowerment · Development Alternatives")
+st.sidebar.title("SEG Dashboard")
+st.sidebar.caption("Development Alternatives")
 
 DEFAULT_PATH_CANDIDATES = ["all_data.parquet", "all_data.xlsx"]
 REMOTE_CACHE_TTL_SECONDS = 900  # 15 min — balances "feels live" vs. GitHub API rate limits
