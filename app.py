@@ -35,138 +35,274 @@ st.set_page_config(page_title="WEE / M&E Dashboard", layout="wide", page_icon="�
 
 # ---------------------------------------------------------------------------
 # Brand tokens — single source of truth for every color/font in the app.
-# Palette rationale: deep forest (growth, sustainability, agri-livelihoods)
-# as the primary; marigold as the warm secondary (India, optimism); clay
-# reserved for alerts only, never decoration. Everything below — CSS, the
-# Plotly theme, and every chart's color arguments — derives from these.
+# Palette: consulting-report style. A deep navy anchor, a single bright
+# accent (cyan) for the "live" series, and a strictly neutral gray ramp for
+# everything else. Color is used to encode meaning, never for decoration:
+# gray = baseline/target/inactive, cyan = focus series, amber = attention,
+# coral = exception, green = confirmed/positive. Everything below — CSS, the
+# Plotly template, and every chart's color arguments — derives from these.
 # ---------------------------------------------------------------------------
 
-INK      = "#20281F"   # primary text
-FOREST   = "#1B4B3F"   # primary brand — deep forest teal-green
-FOREST_D = "#0F332A"   # darker forest, for chrome (sidebar/header)
-MARIGOLD = "#E3A008"   # secondary accent — warmth, pending/attention
-CLAY     = "#B5533C"   # alert / negative — used sparingly, semantic only
-TEAL     = "#2C6E7F"   # neutral data color
-SAGE     = "#3F7D5C"   # positive / verified / green-enterprise data color
-STONE    = "#C9C2B4"   # neutral / target / inactive
-MIST     = "#E7E2D6"   # card borders, dividers, chart gridlines
-PAPER    = "#F7F4EC"   # page background
+DEEP     = "#051C2C"   # deep navy — chrome, headings, primary series
+NAVY     = "#034B6F"   # mid navy — secondary series
+CYAN     = "#00A9F4"   # bright accent — the focus series
+SKY      = "#6BC2ED"   # light accent — tertiary series
+INK      = "#0B1B2B"   # primary text
+MUTED    = "#5A6874"   # secondary text, captions
+GRAY     = "#C4CDD5"   # baseline / target / inactive series
+LINE     = "#E1E6EA"   # hairlines, card borders, gridlines
+PAPER    = "#F2F4F6"   # page background
 CARD     = "#FFFFFF"   # card background
+AMBER    = "#D98E04"   # attention / pending
+CORAL    = "#C0392B"   # exception / negative — semantic only
+GREEN    = "#00A758"   # confirmed / positive
 
-BRAND_COLORWAY = [FOREST, MARIGOLD, TEAL, CLAY, SAGE, "#7A6C50"]
+# Ordered so the first three carry the most weight; categorical charts stay
+# legible in grayscale print because the ramp also varies in lightness.
+BRAND_COLORWAY = [DEEP, CYAN, NAVY, SKY, AMBER, GREEN, CORAL, "#8C9BA8"]
 
-DISPLAY_FONT = "'Spectral', Georgia, serif"
-BODY_FONT = "'IBM Plex Sans', 'Segoe UI', sans-serif"
-MONO_FONT = "'IBM Plex Mono', 'Courier New', monospace"
+DISPLAY_FONT = "'Source Serif 4', Georgia, serif"
+BODY_FONT = "'Inter', 'Helvetica Neue', Arial, sans-serif"
+MONO_FONT = "'Inter', 'Helvetica Neue', Arial, sans-serif"   # tabular figures
 
-pio.templates["seg_brand"] = go.layout.Template(
+pio.templates["mck_brand"] = go.layout.Template(
     layout=go.Layout(
         colorway=BRAND_COLORWAY,
-        font=dict(family=BODY_FONT, color=INK, size=13),
-        title=dict(font=dict(family=DISPLAY_FONT, size=19, color=FOREST_D)),
-        legend=dict(font=dict(size=12), bgcolor="rgba(0,0,0,0)"),
+        font=dict(family=BODY_FONT, color=INK, size=12),
+        title=dict(font=dict(family=BODY_FONT, size=14, color=DEEP), x=0, xanchor="left"),
+        legend=dict(font=dict(size=11, color=MUTED), bgcolor="rgba(0,0,0,0)",
+                    orientation="h", yanchor="bottom", y=1.02, x=0,
+                    title=dict(text="")),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(t=48, l=8, r=8, b=8),
-        xaxis=dict(gridcolor=MIST, zerolinecolor=MIST, linecolor=MIST),
-        yaxis=dict(gridcolor=MIST, zerolinecolor=MIST, linecolor=MIST),
-        coloraxis=dict(colorscale=[[0, PAPER], [1, FOREST]]),
+        margin=dict(t=34, l=4, r=8, b=4),
+        hoverlabel=dict(bgcolor=DEEP, bordercolor=DEEP,
+                        font=dict(family=BODY_FONT, color="#FFFFFF", size=12)),
+        # Consulting-chart convention: no vertical gridlines, hairline
+        # horizontals only, axis lines dropped so the data carries the chart.
+        xaxis=dict(showgrid=False, zeroline=False, linecolor=LINE, ticks="outside",
+                   ticklen=4, tickcolor=LINE, tickfont=dict(size=11, color=MUTED),
+                   title=dict(font=dict(size=11, color=MUTED))),
+        yaxis=dict(gridcolor=LINE, gridwidth=1, zeroline=False, showline=False,
+                   tickfont=dict(size=11, color=MUTED),
+                   title=dict(font=dict(size=11, color=MUTED))),
+        coloraxis=dict(colorscale=[[0, "#EAF6FD"], [1, DEEP]],
+                       colorbar=dict(outlinewidth=0, thickness=10, len=0.8,
+                                     tickfont=dict(size=10, color=MUTED))),
     )
 )
 
-PLOTLY_TEMPLATE = "plotly_white+seg_brand"
+PLOTLY_TEMPLATE = "plotly_white+mck_brand"
 COLOR_SEQ = BRAND_COLORWAY
+
+
+def show(fig, height: int = 340):
+    """Single exit point for every chart, so spacing, hover behaviour and
+    height stay identical across all six sections instead of drifting."""
+    fig.update_layout(height=height, hovermode="closest",
+                      bargap=0.28, bargroupgap=0.12)
+    fig.update_traces(marker_line_width=0, selector=dict(type="bar"))
+    st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
+
+
+def section(number: str, title: str, standfirst: str = ""):
+    """Numbered section rule — the report-chapter device, not a Streamlit h2."""
+    st.markdown(
+        f"""<div class="mck-section">
+              <div class="mck-section-num">{number}</div>
+              <div>
+                <div class="mck-section-title">{title}</div>
+                {f'<div class="mck-section-sub">{standfirst}</div>' if standfirst else ''}
+              </div>
+            </div>""",
+        unsafe_allow_html=True,
+    )
 
 
 def inject_theme():
     st.markdown(f"""
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html, body, [class*="css"] {{ font-family: {BODY_FONT}; color: {INK}; }}
         .stApp {{ background-color: {PAPER}; }}
+        .block-container {{ padding-top: 2.2rem; max-width: 1500px; }}
 
-        h1, h2, h3 {{ font-family: {DISPLAY_FONT} !important; color: {FOREST_D} !important;
-                       font-weight: 600 !important; letter-spacing: -0.01em; }}
-        h2 {{ border-bottom: 2px solid {MARIGOLD}; padding-bottom: 0.35rem; margin-top: 2.2rem !important; }}
-        h3 {{ color: {FOREST} !important; font-size: 1.05rem !important; }}
-
-        /* Sidebar */
-        section[data-testid="stSidebar"] {{
-            background-color: {FOREST_D};
+        /* ---- Typography ------------------------------------------------ */
+        h1, h2, h3 {{ font-family: {BODY_FONT} !important; color: {DEEP} !important;
+                      letter-spacing: -0.015em; }}
+        /* Chart titles: small, quiet, with a hairline underneath — the label
+           sits above the chart rather than competing with it. */
+        h3 {{
+            font-size: 0.86rem !important; font-weight: 600 !important;
+            text-transform: none; color: {DEEP} !important;
+            margin: 1.3rem 0 0.15rem 0 !important; padding-bottom: 0.4rem;
+            border-bottom: 1px solid {LINE};
         }}
-        section[data-testid="stSidebar"] * {{ color: {PAPER} !important; }}
+
+        /* ---- Section rule ---------------------------------------------- */
+        .mck-section {{
+            display: flex; align-items: baseline; gap: 0.9rem;
+            margin: 2.6rem 0 1.1rem 0; padding-top: 0.9rem;
+            border-top: 2px solid {DEEP};
+        }}
+        .mck-section-num {{
+            font-family: {BODY_FONT}; font-size: 0.78rem; font-weight: 700;
+            color: {CYAN}; letter-spacing: 0.12em; padding-top: 0.15rem;
+            font-variant-numeric: tabular-nums;
+        }}
+        .mck-section-title {{
+            font-family: {DISPLAY_FONT}; font-size: 1.35rem; font-weight: 600;
+            color: {DEEP}; line-height: 1.2;
+        }}
+        .mck-section-sub {{
+            font-size: 0.82rem; color: {MUTED}; margin-top: 0.2rem; max-width: 78ch;
+        }}
+
+        /* ---- Sidebar ---------------------------------------------------- */
+        section[data-testid="stSidebar"] {{
+            background-color: {DEEP};
+            border-right: 1px solid {DEEP};
+        }}
+        section[data-testid="stSidebar"] * {{ color: #E8EDF2 !important; }}
         section[data-testid="stSidebar"] h1 {{
-            font-family: {DISPLAY_FONT} !important; color: {PAPER} !important;
-            border-bottom: none; font-size: 1.3rem !important;
+            font-family: {DISPLAY_FONT} !important; color: #FFFFFF !important;
+            font-size: 1.15rem !important; font-weight: 600 !important;
+            letter-spacing: 0.01em; border-bottom: none;
+        }}
+        section[data-testid="stSidebar"] h2 {{
+            font-size: 0.72rem !important; text-transform: uppercase;
+            letter-spacing: 0.14em; color: {SKY} !important; font-weight: 600 !important;
+            border-bottom: none !important; margin-top: 1.6rem !important;
+        }}
+        section[data-testid="stSidebar"] label {{
+            font-size: 0.76rem !important; font-weight: 500 !important;
+            letter-spacing: 0.02em; color: #AFC2D1 !important;
+        }}
+        section[data-testid="stSidebar"] [data-baseweb="select"] > div,
+        section[data-testid="stSidebar"] [data-baseweb="input"] > div {{
+            background-color: rgba(255,255,255,0.06) !important;
+            border: 1px solid rgba(255,255,255,0.18) !important;
+            border-radius: 2px !important;
         }}
         section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] {{
-            background-color: {MARIGOLD} !important; color: {FOREST_D} !important;
+            background-color: {CYAN} !important; color: {DEEP} !important;
+            border-radius: 2px !important; font-weight: 600;
         }}
-        section[data-testid="stSidebar"] hr {{ border-color: rgba(247,244,236,0.2); }}
+        section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] * {{
+            color: {DEEP} !important;
+        }}
+        section[data-testid="stSidebar"] hr {{ border-color: rgba(255,255,255,0.14); }}
+        section[data-testid="stSidebar"] button {{
+            border-radius: 2px !important; border: 1px solid {CYAN} !important;
+            background: transparent !important; font-weight: 600;
+        }}
 
-        /* KPI metric cards */
+        /* ---- KPI blocks -------------------------------------------------
+           Flat tiles with a top keyline instead of rounded, shadowed cards.
+           Value uses tabular figures so columns of numbers align optically. */
         div[data-testid="stMetric"] {{
             background-color: {CARD};
-            border: 1px solid {MIST};
-            border-left: 4px solid {FOREST};
-            border-radius: 6px;
-            padding: 0.9rem 1rem 0.7rem 1rem;
-            box-shadow: 0 1px 3px rgba(15,51,42,0.06);
+            border: 1px solid {LINE};
+            border-top: 3px solid {DEEP};
+            border-radius: 0;
+            padding: 0.85rem 1rem 0.9rem 1rem;
+            box-shadow: none;
+            transition: border-top-color 120ms ease;
         }}
+        div[data-testid="stMetric"]:hover {{ border-top-color: {CYAN}; }}
         div[data-testid="stMetricLabel"] {{
-            font-family: {BODY_FONT}; font-size: 0.74rem !important;
-            text-transform: uppercase; letter-spacing: 0.03em; color: {FOREST} !important;
-            font-weight: 600 !important; white-space: normal !important; line-height: 1.25;
+            font-family: {BODY_FONT}; font-size: 0.68rem !important;
+            text-transform: uppercase; letter-spacing: 0.1em; color: {MUTED} !important;
+            font-weight: 600 !important; white-space: normal !important; line-height: 1.35;
         }}
         div[data-testid="stMetricValue"] {{
-            font-family: {MONO_FONT}; color: {INK} !important; font-weight: 600 !important;
-            white-space: normal !important; overflow-wrap: break-word; font-size: 1.55rem !important;
-            line-height: 1.2;
+            font-family: {MONO_FONT}; color: {DEEP} !important; font-weight: 600 !important;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+            white-space: normal !important; overflow-wrap: break-word;
+            font-size: 1.7rem !important; line-height: 1.15; margin-top: 0.15rem;
+        }}
+        div[data-testid="stMetricDelta"] {{
+            font-size: 0.74rem !important; font-weight: 500 !important; color: {MUTED} !important;
+        }}
+        div[data-testid="stMetricDelta"] svg {{ display: none; }}
+
+        /* ---- Tabs -------------------------------------------------------- */
+        .stTabs [data-baseweb="tab-list"] {{ gap: 1.4rem; border-bottom: 1px solid {LINE}; }}
+        .stTabs [data-baseweb="tab"] {{
+            font-family: {BODY_FONT}; font-weight: 600; font-size: 0.78rem;
+            text-transform: uppercase; letter-spacing: 0.08em; color: {MUTED};
+            padding: 0.35rem 0; background: transparent;
+        }}
+        .stTabs [aria-selected="true"] {{ color: {DEEP} !important; }}
+        .stTabs [data-baseweb="tab-highlight"] {{ background-color: {CYAN} !important; height: 2px; }}
+        .stTabs [data-baseweb="tab-border"] {{ display: none; }}
+
+        /* ---- Controls ---------------------------------------------------- */
+        .stRadio label, .stSelectbox label {{
+            font-size: 0.74rem !important; font-weight: 600 !important;
+            text-transform: uppercase; letter-spacing: 0.08em; color: {MUTED} !important;
+        }}
+        .stRadio [role="radiogroup"] {{ gap: 1.1rem; }}
+        div[data-baseweb="select"] > div {{ border-radius: 2px !important; border-color: {LINE} !important; }}
+
+        /* ---- Data & containers -------------------------------------------- */
+        div[data-testid="stDataFrame"] {{ border: 1px solid {LINE}; border-radius: 0; }}
+        div[data-testid="stExpander"] {{
+            border: 1px solid {LINE} !important; border-radius: 0 !important;
+            background: {CARD};
+        }}
+        div[data-testid="stExpander"] summary {{
+            font-size: 0.8rem; font-weight: 600; color: {DEEP};
+        }}
+        .stCaption, [data-testid="stCaptionContainer"] {{
+            color: {MUTED} !important; font-size: 0.76rem !important; line-height: 1.5;
+        }}
+        hr {{ border-color: {LINE} !important; }}
+        div[data-testid="stAlert"] {{ border-radius: 0; border-left-width: 3px; }}
+
+        /* ---- Masthead ------------------------------------------------------
+           Flat deep-navy band with a cyan keyline and a metadata strip —
+           reads as a report cover page, not a gradient hero card. */
+        .mck-masthead {{
+            background: {DEEP};
+            padding: 1.7rem 2rem 1.4rem 2rem;
+            margin-bottom: 0.4rem;
+            border-bottom: 3px solid {CYAN};
+            border-radius: 0;
+        }}
+        .mck-eyebrow {{
+            font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em;
+            text-transform: uppercase; color: {SKY}; margin-bottom: 0.55rem;
+        }}
+        .mck-masthead h1 {{
+            font-family: {DISPLAY_FONT} !important; color: #FFFFFF !important;
+            font-size: 1.95rem !important; font-weight: 600 !important;
+            margin: 0 0 0.45rem 0 !important; line-height: 1.18;
+            letter-spacing: -0.01em; border-bottom: none !important;
+        }}
+        .mck-masthead p {{
+            color: #A9BDCC !important; font-family: {BODY_FONT};
+            font-size: 0.86rem; margin: 0; max-width: 90ch;
+        }}
+        .mck-metastrip {{
+            display: flex; gap: 2.2rem; flex-wrap: wrap;
+            background: {CARD}; border: 1px solid {LINE}; border-top: none;
+            padding: 0.7rem 2rem; margin-bottom: 1.6rem;
+        }}
+        .mck-metastrip div {{ font-size: 0.72rem; color: {MUTED}; letter-spacing: 0.02em; }}
+        .mck-metastrip b {{
+            display: block; color: {DEEP}; font-size: 0.86rem; font-weight: 600;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
         }}
 
-        /* Tabs */
-        .stTabs [data-baseweb="tab"] {{ font-family: {BODY_FONT}; font-weight: 500; }}
-        .stTabs [aria-selected="true"] {{ color: {FOREST} !important; }}
-        .stTabs [data-baseweb="tab-highlight"] {{ background-color: {MARIGOLD} !important; }}
-
-        /* Radio / selectbox labels */
-        .stRadio label, .stSelectbox label {{ font-weight: 500 !important; color: {FOREST_D} !important; }}
-
-        /* Dataframes */
-        div[data-testid="stDataFrame"] {{ border: 1px solid {MIST}; border-radius: 6px; }}
-
-        /* Captions */
-        .stCaption, [data-testid="stCaptionContainer"] {{ color: #5B5A4F !important; }}
-
-        /* Divider */
-        hr {{ border-color: {MIST} !important; }}
-
-        /* Report banner */
-        .seg-banner {{
-            background: linear-gradient(135deg, {FOREST_D} 0%, {FOREST} 100%);
-            border-radius: 10px;
-            padding: 1.6rem 2rem;
-            margin-bottom: 1.4rem;
-            border-bottom: 4px solid {MARIGOLD};
-        }}
-        .seg-banner h1 {{
-            font-family: {DISPLAY_FONT} !important; color: {PAPER} !important;
-            font-size: 1.9rem !important; margin: 0 0 0.3rem 0 !important;
-            border-bottom: none !important;
-        }}
-        .seg-banner p {{
-            color: {MIST} !important; font-family: {BODY_FONT}; font-size: 0.95rem;
-            margin: 0;
-        }}
-        .seg-footer {{
-            margin-top: 3rem; padding-top: 1rem; border-top: 1px solid {MIST};
-            font-family: {BODY_FONT}; font-size: 0.78rem; color: #8A8877;
-            display: flex; justify-content: space-between;
+        .mck-footer {{
+            margin-top: 3.2rem; padding-top: 0.9rem; border-top: 2px solid {DEEP};
+            font-family: {BODY_FONT}; font-size: 0.72rem; color: {MUTED};
+            display: flex; justify-content: space-between; letter-spacing: 0.02em;
         }}
     </style>
     """, unsafe_allow_html=True)
-
 
 inject_theme()
 
@@ -174,7 +310,7 @@ inject_theme()
 # 0. Data load
 # ---------------------------------------------------------------------------
 
-st.sidebar.title("🌾 SEG Dashboard")
+st.sidebar.title("SEG Dashboard")
 st.sidebar.caption("Sustainable Entrepreneurship Group · Development Alternatives")
 
 DEFAULT_PATH_CANDIDATES = ["all_data.parquet", "all_data.xlsx"]
@@ -210,7 +346,7 @@ df = load_remote_df()
 using_remote = df is not None
 
 if using_remote:
-    st.sidebar.success("🔄 Auto-synced from private data repo")
+    st.sidebar.success("Auto-synced from private data repo")
     if st.sidebar.button("Refresh now"):
         fetch_remote_bytes.clear()
         st.rerun()
@@ -279,11 +415,23 @@ fdf = apply_filters(
 st.sidebar.caption(f"**{len(fdf):,}** records match current filters")
 
 _generated_at = pd.Timestamp.now().strftime("%d %b %Y, %H:%M")
+_active_filters = sum(bool(x) for x in [f_districts, f_blocks, f_villages, f_agencies,
+                                        f_coordinators, f_phases, f_fys, f_date_range])
+_coverage = f"{len(fdf) / max(len(df), 1) * 100:.0f}%"
+
 st.markdown(f"""
-<div class="seg-banner">
-    <h1>Women's Economic Empowerment — M&E Dashboard</h1>
-    <p>Executive progress, financial, sector, geographic, temporal, and sustainability/support views &middot;
-    generated {_generated_at}</p>
+<div class="mck-masthead">
+    <div class="mck-eyebrow">Monitoring &amp; Evaluation &middot; Sustainable Entrepreneurship Group</div>
+    <h1>Women's Economic Empowerment</h1>
+    <p>Executive progress, financial, sector, geographic, temporal and sustainability views.
+    Every figure below responds to the filters set in the left panel.</p>
+</div>
+<div class="mck-metastrip">
+    <div>Records in view<b>{len(fdf):,}</b></div>
+    <div>Share of extract<b>{_coverage}</b></div>
+    <div>Filters applied<b>{_active_filters}</b></div>
+    <div>Data source<b>{"Private repo sync" if using_remote else "Manual extract"}</b></div>
+    <div>Generated<b>{_generated_at}</b></div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -291,7 +439,7 @@ st.markdown(f"""
 # 2. Section 1 — Executive KPI cards
 # ---------------------------------------------------------------------------
 
-st.header("1 · Executive Summary (Till-Date)")
+section("01", "Executive Summary", "Till-date programme totals for the current filter selection.")
 k = compute_kpis(fdf)
 
 r1 = st.columns(3)
@@ -312,13 +460,12 @@ r3[1].metric("Total Loan Mobilized", format_indian_number(k['total_loan_mobilize
 r3[2].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%",
              f"{k['data_correct_rate_pct']:.1f}% flagged correct")
 
-st.divider()
 
 # ---------------------------------------------------------------------------
 # 3. Section 2 — Financial & Loan Breakdown
 # ---------------------------------------------------------------------------
 
-st.header("2 · Financial & Loan Breakdown")
+section("02", "Financial &amp; Loan Breakdown", "Where capital comes from, how much of it, and how it is distributed across sectors and sources.")
 c1, c2 = st.columns(2)
 
 with c1:
@@ -331,11 +478,11 @@ with c1:
             parents=[""] * len(loan_by_source),
             values=loan_by_source.values,
             color=loan_by_source.values,
-            color_continuous_scale=[[0, PAPER], [1, SAGE]],
+            color_continuous_scale=[[0, "#EAF6FD"], [1, GREEN]],
             template=PLOTLY_TEMPLATE,
         )
         fig.update_traces(texttemplate="%{label}<br>₹%{value:,.0f}")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
     else:
         st.caption("No loan data for current filter selection.")
 
@@ -352,7 +499,7 @@ with c2:
             stacked, barmode="stack", template=PLOTLY_TEMPLATE, color_discrete_sequence=COLOR_SEQ,
             labels={"value": "Loan Amount (₹)", "sector1": "Sector", "variable": "Source"},
         )
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 st.subheader("Borrowers & Average Loan Size by Source")
 if len(melt_cols):
@@ -380,16 +527,16 @@ if len(melt_cols):
         st.caption("Number of borrowers by source")
         bd = borrower_df.sort_values("borrowers", ascending=True)
         fig = px.bar(bd, x="borrowers", y="source", orientation="h", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[TEAL])
+                     color_discrete_sequence=[CYAN])
         fig.update_layout(yaxis_title="", xaxis_title="Entrepreneurs")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
     with c2:
         st.caption("Average loan size by source (among that source's borrowers)")
         ad = borrower_df.sort_values("avg_loan_size", ascending=True)
         fig = px.bar(ad, x="avg_loan_size", y="source", orientation="h", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[MARIGOLD])
+                     color_discrete_sequence=[AMBER])
         fig.update_layout(yaxis_title="", xaxis_title="Average Loan Amount (₹)")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
     st.caption("Borrower counts and per-source averages count each entrepreneur under every source they "
                "used (someone can borrow from both CLF and a bank) — they won't sum to the total above. "
@@ -407,7 +554,7 @@ if {"total_investment", "total_loan_amount", "sector1"}.issubset(fdf.columns):
             labels={"total_investment": "Total Investment (₹)", "total_loan_amount": "Total Loan Amount (₹)"},
             hover_data=["district1", "agency"] if {"district1", "agency"}.issubset(plot_df.columns) else None,
         )
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
     with tab_b:
         melt = plot_df.melt(id_vars="sector1", value_vars=["total_investment", "total_loan_amount"],
                              var_name="metric", value_name="amount")
@@ -416,7 +563,7 @@ if {"total_investment", "total_loan_amount", "sector1"}.issubset(fdf.columns):
             color_discrete_sequence=COLOR_SEQ, points=False,
             labels={"amount": "Amount (₹)", "sector1": "Sector"},
         )
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 st.subheader("Loan-to-Savings Ratio")
 if {"total_loan_amount", "individual_saving_invested"}.issubset(fdf.columns):
@@ -433,23 +580,22 @@ if {"total_loan_amount", "individual_saving_invested"}.issubset(fdf.columns):
         ratio_agg = ratio_agg.sort_values("ratio", ascending=True)
         fig = px.bar(
             ratio_agg, x="ratio", y=ratio_dim, orientation="h", template=PLOTLY_TEMPLATE,
-            color_discrete_sequence=[CLAY],
+            color_discrete_sequence=[CORAL],
             labels={"ratio": "Loan ÷ Savings", ratio_dim: "Sector" if ratio_dim == "sector1" else "District"},
         )
         fig.add_vline(x=1, line_dash="dash", line_color="gray",
                        annotation_text="1:1 (loan = savings)", annotation_position="top")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
         st.caption("A ratio above 1 means loan mobilization outpaces personal savings invested in that "
                    "group — useful as a rough proxy for reliance on external credit vs. self-funding. "
                    "Groups with zero recorded savings are excluded to avoid a divide-by-zero distortion.")
 
-st.divider()
 
 # ---------------------------------------------------------------------------
 # 4. Section 3 — Sector & Enterprise Deep-Dive
 # ---------------------------------------------------------------------------
 
-st.header("3 · Sector & Enterprise Deep-Dive")
+section("03", "Sector &amp; Enterprise Deep-Dive", "Composition of the portfolio by sector, enterprise type and entrepreneur profile.")
 
 c1, c2 = st.columns([1, 1])
 with c1:
@@ -462,12 +608,12 @@ with c1:
             fig = px.bar(counts, x="count", y="sector1", orientation="h", template=PLOTLY_TEMPLATE,
                          color="sector1", color_discrete_sequence=COLOR_SEQ)
             fig.update_layout(showlegend=False, yaxis_title="", xaxis_title="Entrepreneurs")
-            st.plotly_chart(fig, width='stretch')
+            show(fig)
         with tab_pie:
             fig = px.pie(counts, names="sector1", values="count", template=PLOTLY_TEMPLATE,
                          color_discrete_sequence=COLOR_SEQ, hole=0.35)
             fig.update_traces(textinfo="percent+label")
-            st.plotly_chart(fig, width='stretch')
+            show(fig)
 
 with c2:
     st.subheader("Top 10 enterprise types (overall)")
@@ -475,9 +621,9 @@ with c2:
         top10 = fdf["enterprise_type"].value_counts().head(10).reset_index()
         top10.columns = ["enterprise_type", "count"]
         fig = px.bar(top10, x="count", y="enterprise_type", orientation="h", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[SAGE])
+                     color_discrete_sequence=[GREEN])
         fig.update_layout(yaxis={"categoryorder": "total ascending"}, yaxis_title="", xaxis_title="Entrepreneurs")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 if {"sector1", "enterprise_type"}.issubset(fdf.columns):
     st.subheader("Top 10 enterprise types — by selected sector")
@@ -486,9 +632,9 @@ if {"sector1", "enterprise_type"}.issubset(fdf.columns):
     top10_sector = sub["enterprise_type"].value_counts().head(10).reset_index()
     top10_sector.columns = ["enterprise_type", "count"]
     fig = px.bar(top10_sector, x="count", y="enterprise_type", orientation="h", template=PLOTLY_TEMPLATE,
-                 color_discrete_sequence=[FOREST])
+                 color_discrete_sequence=[DEEP])
     fig.update_layout(yaxis={"categoryorder": "total ascending"}, yaxis_title="", xaxis_title="Entrepreneurs")
-    st.plotly_chart(fig, width='stretch')
+    show(fig)
 
 c3, c4 = st.columns(2)
 with c3:
@@ -498,7 +644,7 @@ with c3:
         fig = px.bar(ct, x="sector1", y="count", color="gender", barmode="stack",
                      template=PLOTLY_TEMPLATE, color_discrete_sequence=COLOR_SEQ)
         fig.update_layout(xaxis_title="", yaxis_title="Entrepreneurs")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 with c4:
     st.subheader("Social category distribution by sector")
@@ -507,29 +653,28 @@ with c4:
         fig = px.bar(ct, x="sector1", y="count", color="social_category", barmode="stack",
                      template=PLOTLY_TEMPLATE, color_discrete_sequence=COLOR_SEQ)
         fig.update_layout(xaxis_title="", yaxis_title="Entrepreneurs")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 st.subheader("District × Sector heatmap")
 if {"district1", "sector1"}.issubset(fdf.columns):
     pivot = pd.crosstab(fdf["district1"], fdf["sector1"])
     if pivot.size:
         fig = px.imshow(
-            pivot, template=PLOTLY_TEMPLATE, color_continuous_scale=[[0, PAPER], [1, FOREST]], aspect="auto",
+            pivot, template=PLOTLY_TEMPLATE, color_continuous_scale=[[0, "#EAF6FD"], [1, DEEP]], aspect="auto",
             labels=dict(x="Sector", y="District", color="Entrepreneurs"),
         )
         fig.update_layout(xaxis_tickangle=-35)
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
         st.caption("Darker cells = more entrepreneurs in that district-sector combination. "
                    "Useful for spotting which districts are concentrated in a narrow set of sectors "
                    "vs. diversified.")
 
-st.divider()
 
 # ---------------------------------------------------------------------------
 # 5. Section 4 — Geographic & Agency Performance
 # ---------------------------------------------------------------------------
 
-st.header("4 · Geographic & Agency Performance")
+section("04", "Geographic &amp; Agency Performance", "Delivery performance by district and implementing agency, measured against official targets.")
 
 st.subheader("Agency-wise Progress")
 if "agency" in fdf.columns:
@@ -546,27 +691,27 @@ if "agency" in fdf.columns:
     with a1:
         st.caption("Entrepreneurs Onboarded")
         fig = px.bar(agency_agg.sort_values("onboarded"), x="onboarded", y="agency", orientation="h",
-                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[FOREST])
+                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[DEEP])
         fig.update_layout(yaxis_title="", xaxis_title="")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
     with a2:
         st.caption("Jobs Created")
         fig = px.bar(agency_agg.sort_values("jobs_created"), x="jobs_created", y="agency", orientation="h",
-                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[TEAL])
+                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[CYAN])
         fig.update_layout(yaxis_title="", xaxis_title="")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
     with a3:
         st.caption("Green %")
         fig = px.bar(agency_agg.sort_values("green_pct"), x="green_pct", y="agency", orientation="h",
-                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[SAGE])
+                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[GREEN])
         fig.update_layout(yaxis_title="", xaxis_title="%")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
     with a4:
         st.caption("Loan Mobilized (₹)")
         fig = px.bar(agency_agg.sort_values("loan_mobilized"), x="loan_mobilized", y="agency", orientation="h",
-                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[MARIGOLD])
+                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[AMBER])
         fig.update_layout(yaxis_title="", xaxis_title="")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 else:
     st.caption("No agency field available for the current filter selection.")
 
@@ -589,21 +734,21 @@ if geo_dim in fdf.columns:
     with c1:
         st.caption("Onboarded")
         fig = px.bar(agg, x="onboarded", y=geo_dim, orientation="h", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[TEAL])
+                     color_discrete_sequence=[CYAN])
         fig.update_layout(yaxis={"categoryorder": "total ascending"}, yaxis_title="", xaxis_title="")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
     with c2:
         st.caption("Green %")
         fig = px.bar(agg.sort_values("green_pct"), x="green_pct", y=geo_dim, orientation="h",
-                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[SAGE])
+                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[GREEN])
         fig.update_layout(yaxis_title="", xaxis_title="%")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
     with c3:
         st.caption("Loan Mobilized (₹)")
         fig = px.bar(agg.sort_values("loan_mobilized"), x="loan_mobilized", y=geo_dim, orientation="h",
-                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[CLAY])
+                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[CORAL])
         fig.update_layout(yaxis_title="", xaxis_title="")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 st.subheader(f"Data quality status by {'district' if geo_dim=='district1' else 'agency'}")
 if "verification_status" in fdf.columns:
@@ -611,11 +756,11 @@ if "verification_status" in fdf.columns:
     fig = px.bar(qc, x=geo_dim, y="count", color="verification_status", barmode="stack",
                  template=PLOTLY_TEMPLATE,
                  color_discrete_map={
-                     "pending": MARIGOLD, "verified - correct": SAGE,
-                     "verified - issue flagged": CLAY,
+                     "pending": AMBER, "verified - correct": GREEN,
+                     "verified - issue flagged": CORAL,
                  })
     fig.update_layout(xaxis_title="", yaxis_title="Records")
-    st.plotly_chart(fig, width='stretch')
+    show(fig)
 
 st.subheader("Target vs. Achieved (official district targets)")
 targets_merged, untracked_districts = target_vs_achieved(fdf)
@@ -628,12 +773,12 @@ if len(targets_merged):
     tv = targets_merged[targets_merged["metric"] == metric_key].sort_values("target", ascending=False)
 
     fig = go.Figure()
-    fig.add_bar(x=tv["district1"], y=tv["target"], name="Target", marker_color=STONE)
+    fig.add_bar(x=tv["district1"], y=tv["target"], name="Target", marker_color=GRAY)
     fig.add_bar(x=tv["district1"], y=tv["achieved_official"], name="Achieved (official)",
-                marker_color=TEAL)
+                marker_color=CYAN)
     fig.update_layout(barmode="group", template=PLOTLY_TEMPLATE, yaxis_title=metric_pick,
                        xaxis_title="", legend=dict(orientation="h", y=1.1))
-    st.plotly_chart(fig, width='stretch')
+    show(fig)
 
     with st.expander("Compare official 'Achieved' vs. live count in this data extract"):
         st.caption(
@@ -662,13 +807,12 @@ if len(targets_merged):
 else:
     st.caption("No target data available for the current filter selection.")
 
-st.divider()
 
 # ---------------------------------------------------------------------------
 # 6. Section 5 — Temporal Trends
 # ---------------------------------------------------------------------------
 
-st.header("5 · Temporal Trends")
+section("05", "Temporal Trends", "Onboarding, jobs and capital mobilisation over time. Records with invalid dates are excluded here.")
 
 tdf = fdf[fdf["date_valid"]] if "date_valid" in fdf.columns else fdf
 
@@ -681,26 +825,26 @@ if "financial_year" in tdf.columns:
     ).reset_index().sort_values("financial_year")
     fig = go.Figure()
     fig.add_bar(x=fy_agg["financial_year"], y=fy_agg["entrepreneurs"], name="Entrepreneurs",
-                marker_color=TEAL)
+                marker_color=CYAN)
     fig.add_trace(go.Scatter(x=fy_agg["financial_year"], y=fy_agg["jobs"], name="Jobs Created",
-                              yaxis="y2", mode="lines+markers", line=dict(color=CLAY)))
+                              yaxis="y2", mode="lines+markers", line=dict(color=CORAL)))
     fig.update_layout(
         template=PLOTLY_TEMPLATE,
         yaxis=dict(title="Entrepreneurs"),
         yaxis2=dict(title="Jobs Created", overlaying="y", side="right"),
         legend=dict(orientation="h", y=1.1),
     )
-    st.plotly_chart(fig, width='stretch')
+    show(fig)
 
 st.subheader("Enterprise growth — new vs. existing, over time")
 if {"onboard_month", "new_or_existing"}.issubset(tdf.columns):
     growth = tdf.groupby(["onboard_month", "new_or_existing"]).size().reset_index(name="count")
     fig = px.area(
         growth, x="onboard_month", y="count", color="new_or_existing", template=PLOTLY_TEMPLATE,
-        color_discrete_sequence=[TEAL, SAGE],
+        color_discrete_sequence=[CYAN, GREEN],
         labels={"onboard_month": "Month", "count": "Entrepreneurs", "new_or_existing": "Enterprise Status"},
     )
-    st.plotly_chart(fig, width='stretch')
+    show(fig)
 
 st.subheader("Current FY drill-down")
 current_fy_opts = sorted(tdf["financial_year"].dropna().unique()) if "financial_year" in tdf.columns else []
@@ -720,22 +864,22 @@ if current_fy_opts:
 
     fig = px.bar(
         period_agg, x=period_col, y="entrepreneurs", template=PLOTLY_TEMPLATE,
-        color_discrete_sequence=[TEAL],
+        color_discrete_sequence=[CYAN],
         labels={period_col: granularity, "entrepreneurs": "New Onboarding"},
     )
-    st.plotly_chart(fig, width='stretch')
+    show(fig)
 
     c1, c2 = st.columns(2)
     with c1:
         fig = px.line(period_agg, x=period_col, y="jobs", markers=True, template=PLOTLY_TEMPLATE,
                        labels={period_col: granularity, "jobs": "Jobs Created"},
-                       color_discrete_sequence=[SAGE])
-        st.plotly_chart(fig, width='stretch')
+                       color_discrete_sequence=[GREEN])
+        show(fig)
     with c2:
         fig = px.line(period_agg, x=period_col, y="loan_mobilized", markers=True, template=PLOTLY_TEMPLATE,
                        labels={period_col: granularity, "loan_mobilized": "Loan Mobilized (₹)"},
-                       color_discrete_sequence=[CLAY])
-        st.plotly_chart(fig, width='stretch')
+                       color_discrete_sequence=[CORAL])
+        show(fig)
 
 st.subheader("Monthly trajectories — key indicators (multi-line, indexed)")
 if "onboard_month" in tdf.columns:
@@ -758,20 +902,19 @@ if "onboard_month" in tdf.columns:
     fig = px.line(melt, x="onboard_month", y="index_value", color="indicator", markers=True,
                   template=PLOTLY_TEMPLATE, color_discrete_sequence=COLOR_SEQ,
                   labels={"onboard_month": "Month", "index_value": "Index (first month = 100)"})
-    st.plotly_chart(fig, width='stretch')
+    show(fig)
     st.caption("Series are indexed to 100 at the first month in range so indicators with very "
                "different scales (e.g. CO₂ tonnes vs. entrepreneur counts) can be compared on one chart. "
                "Toggle raw values below.")
     with st.expander("Show raw monthly values"):
         st.dataframe(monthly, width='stretch')
 
-st.divider()
 
 # ---------------------------------------------------------------------------
 # 7. Section 6 — Sustainability & Support
 # ---------------------------------------------------------------------------
 
-st.header("6 · Sustainability & Support")
+section("06", "Sustainability &amp; Support", "Green-energy adoption, resource practices, and the gap between support needed and support delivered.")
 
 # --- Green energy adoption --------------------------------------------------
 st.subheader("Green Energy Adoption")
@@ -783,9 +926,9 @@ with c1:
         solar_counts = fdf["are_you_using_solar_electricity"].value_counts().reset_index()
         solar_counts.columns = ["status", "count"]
         fig = px.pie(solar_counts, names="status", values="count", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[SAGE, STONE], hole=0.4)
+                     color_discrete_sequence=[GREEN, GRAY], hole=0.4)
         fig.update_traces(textinfo="percent+label")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 with c2:
     st.caption("Solar adoption by district")
@@ -794,19 +937,19 @@ with c2:
             lambda s: (s == "yes").mean() * 100
         ).reset_index(name="solar_pct").sort_values("solar_pct")
         fig = px.bar(solar_by_d, x="solar_pct", y="district1", orientation="h",
-                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[MARIGOLD])
+                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[AMBER])
         fig.update_layout(yaxis_title="", xaxis_title="% using solar")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 with c3:
     st.caption("Solar panel capacity (kW) — among adopters")
     if "solar_panel_capacity" in fdf.columns:
         cap = fdf.loc[fdf["solar_panel_capacity"] > 0, "solar_panel_capacity"].dropna()
         if len(cap):
-            fig = px.histogram(cap, template=PLOTLY_TEMPLATE, color_discrete_sequence=[TEAL],
+            fig = px.histogram(cap, template=PLOTLY_TEMPLATE, color_discrete_sequence=[CYAN],
                                labels={"value": "Capacity (kW)"})
             fig.update_layout(showlegend=False, yaxis_title="Enterprises")
-            st.plotly_chart(fig, width='stretch')
+            show(fig)
         else:
             st.caption("No solar capacity data for current filter selection.")
 
@@ -820,9 +963,9 @@ with c1:
         treat_counts = fdf["do_you_treat_your_waste"].value_counts().reset_index()
         treat_counts.columns = ["status", "count"]
         fig = px.pie(treat_counts, names="status", values="count", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[SAGE, CLAY], hole=0.4)
+                     color_discrete_sequence=[GREEN, CORAL], hole=0.4)
         fig.update_traces(textinfo="percent+label")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 with c2:
     st.caption("Water reuse")
@@ -830,9 +973,9 @@ with c2:
         reuse_counts = fdf["do_you_reuse_your_water"].value_counts().reset_index()
         reuse_counts.columns = ["status", "count"]
         fig = px.pie(reuse_counts, names="status", values="count", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[TEAL, STONE], hole=0.4)
+                     color_discrete_sequence=[CYAN, GRAY], hole=0.4)
         fig.update_traces(textinfo="percent+label")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 with c3:
     st.caption("Water sources used")
@@ -840,9 +983,9 @@ with c3:
         src_counts = split_multiselect_counts(fdf["water_sources"]).head(8).reset_index()
         src_counts.columns = ["source", "count"]
         fig = px.bar(src_counts, x="count", y="source", orientation="h", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[TEAL])
+                     color_discrete_sequence=[CYAN])
         fig.update_layout(yaxis={"categoryorder": "total ascending"}, yaxis_title="", xaxis_title="Enterprises")
-        st.plotly_chart(fig, width='stretch')
+        show(fig)
 
 st.caption("Waste and water fields are sparsely filled in the current extract — treat these as "
            "directional, not comprehensive, until more enterprises report on this section.")
@@ -857,12 +1000,12 @@ if {"further_support_required", "support_provided_by_da"}.issubset(fdf.columns):
 
     fig = go.Figure()
     fig.add_bar(y=gap["category"], x=gap["Further support required"], name="Further support required",
-                orientation="h", marker_color=CLAY)
+                orientation="h", marker_color=CORAL)
     fig.add_bar(y=gap["category"], x=gap["Support already provided"], name="Support already provided",
-                orientation="h", marker_color=SAGE)
+                orientation="h", marker_color=GREEN)
     fig.update_layout(barmode="group", template=PLOTLY_TEMPLATE, xaxis_title="Mentions",
                        yaxis_title="", legend=dict(orientation="h", y=1.1))
-    st.plotly_chart(fig, width='stretch')
+    show(fig)
     st.caption("Categories are split out of multi-select responses (e.g. 'financial,marketing' counts "
                "toward both Financial and Marketing) — bars are mention counts, not unique entrepreneurs, "
                "so they won't sum to the total record count.")
@@ -874,7 +1017,7 @@ if {"further_support_required", "support_provided_by_da"}.issubset(fdf.columns):
             st.dataframe(detail, width='stretch', hide_index=True)
 
 st.markdown(f"""
-<div class="seg-footer">
+<div class="mck-footer">
     <span>Development Alternatives &middot; Sustainable Entrepreneurship Group</span>
     <span>Generated {_generated_at} &middot; {len(fdf):,} of {len(df):,} records shown</span>
 </div>
