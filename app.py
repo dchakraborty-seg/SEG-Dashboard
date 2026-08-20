@@ -208,7 +208,7 @@ def inject_theme():
             border: none;
             border-top: 3px solid {DEEP};
             border-radius: 0;
-            padding: 0.85rem 1rem 0.9rem 1rem;
+            padding: 0.7rem 0.9rem 0.75rem 0.9rem;
             box-shadow: none;
             transition: border-top-color 120ms ease;
         }}
@@ -222,7 +222,7 @@ def inject_theme():
             font-family: {MONO_FONT}; color: {DEEP} !important; font-weight: 600 !important;
             font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
             white-space: normal !important; overflow-wrap: break-word;
-            font-size: 1.7rem !important; line-height: 1.15; margin-top: 0.15rem;
+            font-size: 1.5rem !important; line-height: 1.1; margin-top: 0.1rem;
         }}
         div[data-testid="stMetricDelta"] {{
             font-size: 0.72rem !important; font-weight: 500 !important;
@@ -234,8 +234,8 @@ def inject_theme():
         }}
         /* equal-height tiles regardless of whether a delta line is present */
         div[data-testid="stColumn"] div[data-testid="stMetric"] {{
-            height: 100%; min-height: 116px;
-            display: flex; flex-direction: column; justify-content: flex-start;
+            height: 100%; min-height: 0;
+            display: flex; flex-direction: column; justify-content: center;
         }}
         div[data-testid="stMetricDelta"] svg {{ display: none; }}
 
@@ -276,16 +276,30 @@ def inject_theme():
             border: none !important; border-left: 3px solid {CYAN} !important;
             box-shadow: none !important; padding: 0.65rem 0.9rem !important;
         }}
+        div[data-testid="stAlert"] > div,
+        div[data-testid="stAlert"] div,
+        div[data-testid="stAlertContainer"],
+        div[data-testid="stAlertContentInfo"],
+        div[data-testid="stAlertContentSuccess"],
+        div[data-testid="stAlertContentWarning"],
+        div[data-testid="stAlertContentError"] {{
+            background: transparent !important; background-color: transparent !important;
+            border: none !important; border-radius: 0 !important; box-shadow: none !important;
+            padding: 0 !important;
+        }}
         div[data-testid="stAlert"] * {{
-            color: {INK} !important; font-size: 0.79rem !important; fill: {MUTED} !important;
+            color: {INK} !important; font-size: 0.79rem !important;
+            fill: {MUTED} !important; line-height: 1.45 !important;
         }}
         section[data-testid="stSidebar"] div[data-testid="stAlert"] {{
             background: rgba(255,255,255,0.05) !important;
             border: none !important;
             border-left: 3px solid {CYAN} !important;
         }}
-        section[data-testid="stSidebar"] div[data-testid="stAlert"] * {{
-            color: #D6E1EA !important;
+        section[data-testid="stSidebar"] div[data-testid="stAlert"] *,
+        section[data-testid="stSidebar"] div[data-testid="stAlertContainer"] {{
+            color: #D6E1EA !important; background: transparent !important;
+            background-color: transparent !important; box-shadow: none !important;
         }}
 
         /* ---- Masthead ------------------------------------------------------
