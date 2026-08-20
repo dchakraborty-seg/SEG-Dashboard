@@ -1,7 +1,17 @@
 [theme]
 base = "dark"
-primaryColor = "#00A9F4"
-backgroundColor = "#0B1B2B"
-secondaryBackgroundColor = "#06131F"
-textColor = "#E4ECF2"
+
+# Primary accent — used for buttons, active elements, links
+primaryColor = "#18B6F2"
+
+# Main application background
+backgroundColor = "#081522"
+
+# Sidebar, widgets and secondary surfaces
+secondaryBackgroundColor = "#0D2233"
+
+# Primary text
+textColor = "#EAF2F7"
+
+# Clean modern font
 font = "sans serif"
