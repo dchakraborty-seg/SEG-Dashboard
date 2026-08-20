@@ -1,7 +1,7 @@
 """
 app.py
 ------
-SEG / M&E Monitoring Dashboard — Streamlit + Plotly
+WEE / M&E Monitoring Dashboard — Streamlit + Plotly
 
 Run with:
     streamlit run app.py
@@ -31,16 +31,14 @@ from data_utils import load_data, apply_filters, split_multiselect_counts, DATE_
 from kpi_utils import compute_kpis, format_indian_number
 from targets_utils import target_vs_achieved, METRIC_LABELS
 
-st.set_page_config(page_title="SEG / M&E Dashboard", layout="wide", page_icon="📊")
+st.set_page_config(page_title="WEE / M&E Dashboard", layout="wide", page_icon="📊")
 
 # ---------------------------------------------------------------------------
 # Brand tokens — single source of truth for every color/font in the app.
-# Palette: consulting-report style. A deep navy anchor, a single bright
-# accent (cyan) for the "live" series, and a strictly neutral gray ramp for
-# everything else. Color is used to encode meaning, never for decoration:
-# gray = baseline/target/inactive, cyan = focus series, amber = attention,
-# coral = exception, green = confirmed/positive. Everything below — CSS, the
-# Plotly template, and every chart's color arguments — derives from these.
+# Dark canvas, cyan focus accent, neutral ramp for everything else. Color
+# encodes meaning, never decoration: gray = baseline/target/inactive,
+# cyan = focus series, amber = attention, coral = exception,
+# green = confirmed/positive.
 # ---------------------------------------------------------------------------
 
 DEEP     = "#071A2A"
@@ -104,12 +102,67 @@ PLOTLY_TEMPLATE = "mck_brand"
 COLOR_SEQ = BRAND_COLORWAY
 
 
-def show(fig, height: int = 340):
+def compact_number(v) -> str:
+    """Short label for a data point: crore / lakh for money-scale figures,
+    thousands separators below that, one decimal for fractional values such
+    as percentages."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return ""
+    if pd.isna(v):
+        return ""
+    a = abs(v)
+    if a >= 1e7:
+        return f"{v / 1e7:,.2f} Cr"
+    if a >= 1e5:
+        return f"{v / 1e5:,.2f} L"
+    if a >= 1000:
+        return f"{v:,.0f}"
+    if a and abs(v - round(v)) > 1e-9:
+        return f"{v:,.1f}"
+    return f"{v:,.0f}"
+
+
+def show(fig, height: int = 340, labels: bool = True):
     """Single exit point for every chart, so spacing, hover behaviour and
-    height stay identical across all six sections instead of drifting."""
+    height stay identical across all six sections instead of drifting.
+    Also stamps values onto every trace that can carry one — bars, pies,
+    heatmap cells, line markers — so figures read without hovering."""
     fig.update_layout(height=height, hovermode="closest",
                       bargap=0.28, bargroupgap=0.12)
     fig.update_traces(marker_line_width=0, selector=dict(type="bar"))
+
+    if labels:
+        stacked = fig.layout.barmode in ("stack", "relative")
+        for tr in fig.data:
+            kind = tr.type
+            if kind == "bar":
+                vals = tr.x if getattr(tr, "orientation", None) == "h" else tr.y
+                if vals is None or getattr(tr, "text", None) is not None:
+                    continue
+                tr.text = [compact_number(v) for v in vals]
+                # stacked segments have no outside room; group/single bars do
+                tr.textposition = "inside" if stacked else "outside"
+                tr.textfont = dict(size=10)
+                tr.cliponaxis = False
+                if stacked:
+                    tr.insidetextanchor = "middle"
+            elif kind == "pie":
+                tr.textinfo = "label+value+percent"
+                tr.textfont = dict(size=10)
+            elif kind == "heatmap":
+                tr.texttemplate = "%{z}"
+                tr.textfont = dict(size=9)
+            elif kind == "scatter" and "markers" in (getattr(tr, "mode", "") or ""):
+                tr.text = [compact_number(v) for v in (tr.y if tr.y is not None else [])]
+                tr.mode = tr.mode if "text" in tr.mode else tr.mode + "+text"
+                tr.textposition = "top center"
+                tr.textfont = dict(size=9)
+        if not stacked:
+            # outside labels need headroom or they clip at the plot edge
+            fig.update_layout(margin=dict(t=44, l=8, r=48, b=8))
+
     st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
 
 
@@ -223,8 +276,6 @@ def inject_theme():
         }}
     </style>
     """, unsafe_allow_html=True)
-
-
 inject_theme()
 
 # ---------------------------------------------------------------------------
@@ -394,20 +445,52 @@ st.markdown(f"""
 section("01", "Executive Summary", "Till-date programme totals for the current filter selection.")
 k = compute_kpis(fdf)
 
-r1 = st.columns(3)
+# The extract has been through several column-naming revisions, so resolve
+# the women-employee column by pattern rather than hard-coding one name.
+WOMEN_EMP_CANDIDATES = ["total_female_employees", "female_employees", "women_employees",
+                        "total_women_employees", "no_of_female_employees",
+                        "number_of_female_employees"]
+women_emp_col = next((c for c in WOMEN_EMP_CANDIDATES if c in fdf.columns), None)
+if women_emp_col is None:
+    women_emp_col = next(
+        (c for c in fdf.columns
+         if ("female" in c.lower() or "women" in c.lower())
+         and any(w in c.lower() for w in ("employee", "worker", "staff"))
+         and pd.api.types.is_numeric_dtype(fdf[c])),
+        None,
+    )
+total_women_employees = float(fdf[women_emp_col].sum()) if women_emp_col else None
+
+# Finance unlocked = credit mobilised from all sources + the entrepreneur's
+# own money put into the enterprise.
+total_finance_unlocked = float(k["total_loan_mobilized"]) + float(k["total_savings_invested"])
+
+r1 = st.columns(4)
 r1[0].metric("Total Entrepreneurs", f"{k['total_entrepreneurs']:,}")
-r1[1].metric("Jobs Created", f"{k['total_jobs_created']:,.0f}")
-r1[2].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%", f"{k['data_correct_rate_pct']:.1f}% flagged correct")
+r1[1].metric("Youth (≤29)", f"{k['youth_entrepreneurs']:,}",
+             f"{k['youth_entrepreneurs'] / max(k['total_entrepreneurs'],1) * 100:.1f}%")
+r1[2].metric("Jobs Created", f"{k['total_jobs_created']:,.0f}")
+r1[3].metric(
+    "Total Women Employees",
+    f"{total_women_employees:,.0f}" if total_women_employees is not None else "—",
+    None if women_emp_col else "no matching column in extract",
+    delta_color="off",
+)
 
-r2 = st.columns(4)
-r2[0].metric("Youth (≤29)", f"{k['youth_entrepreneurs']:,}", f"{k['youth_entrepreneurs'] / max(k['total_entrepreneurs'],1) * 100:.1f}% of entrepreneurs")
-r2[1].metric("High-Growth Enterprises", f"{k['high_growth_enterprises']:,}", "> 2 employees", delta_color="off")
-r2[2].metric("Green Enterprises", f"{k['green_enterprises']:,}", f"{k['green_pct']:.1f}% of total")
-r2[3].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} t")
+r2 = st.columns(3)
+r2[0].metric("High-Growth Enterprises", f"{k['high_growth_enterprises']:,}", "> 2 employees",
+              delta_color="off")
+r2[1].metric("Green Enterprises", f"{k['green_enterprises']:,}", f"{k['green_pct']:.1f}% of total")
+r2[2].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} t")
 
-r3 = st.columns(3)
+r3 = st.columns(4)
 r3[0].metric("Total Savings Invested", format_indian_number(k['total_savings_invested']))
 r3[1].metric("Total Loan Mobilized", format_indian_number(k['total_loan_mobilized']))
+r3[2].metric("Total Finance Unlocked", format_indian_number(total_finance_unlocked),
+             "loan + own savings", delta_color="off")
+r3[3].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%",
+             f"{k['data_correct_rate_pct']:.1f}% flagged correct")
+
 
 # ---------------------------------------------------------------------------
 # 3. Section 2 — Financial & Loan Breakdown
@@ -697,7 +780,7 @@ if "verification_status" in fdf.columns:
     fig.update_layout(xaxis_title="", yaxis_title="Records")
     show(fig)
 
-st.subheader("Target vs. Achieved (official district targets)")
+st.subheader("Target vs. Achieved — live count against official district targets")
 targets_merged, untracked_districts = target_vs_achieved(fdf)
 if len(targets_merged):
     metric_pick = st.selectbox(
@@ -707,28 +790,42 @@ if len(targets_merged):
     metric_key = [k for k, v in METRIC_LABELS.items() if v == metric_pick][0]
     tv = targets_merged[targets_merged["metric"] == metric_key].sort_values("target", ascending=False)
 
+    # Achievement is read live from the current extract; the programme's own
+    # reported figure is no longer plotted or used in any percentage here.
+    tv = tv.copy()
+    tv["pct_live"] = tv["live_extract_count"] / tv["target"].replace(0, np.nan) * 100
+
     fig = go.Figure()
     fig.add_bar(x=tv["district1"], y=tv["target"], name="Target", marker_color="#5C7386")
-    fig.add_bar(x=tv["district1"], y=tv["achieved_official"], name="Achieved (official)",
+    fig.add_bar(x=tv["district1"], y=tv["live_extract_count"], name="Achieved (live count)",
                 marker_color=CYAN)
     fig.update_layout(barmode="group", template=PLOTLY_TEMPLATE, yaxis_title=metric_pick,
                        xaxis_title="", legend=dict(orientation="h", y=1.1))
-    show(fig)
+    show(fig, height=400)
 
-    with st.expander("Compare official 'Achieved' vs. live count in this data extract"):
+    _tot_target = float(tv["target"].sum())
+    _tot_live = float(tv["live_extract_count"].sum())
+    t1, t2, t3 = st.columns(3)
+    t1.metric("Total Target", f"{_tot_target:,.0f}")
+    t2.metric("Achieved (live count)", f"{_tot_live:,.0f}")
+    t3.metric("Achievement", f"{_tot_live / _tot_target * 100:,.1f}%" if _tot_target else "—",
+              f"gap {(_tot_target - _tot_live):,.0f} to target" if _tot_target else None,
+              delta_color="off")
+
+    with st.expander("District-wise target vs. live achievement"):
         st.caption(
-            "These two numbers are **not expected to match**: 'Achieved (official)' is the "
-            "reported figure from the programme's targets sheet as of its own cutoff date; "
-            "'Live extract count' is counted fresh from whatever data extract is currently "
-            "loaded and filtered, and typically includes unverified/in-progress records the "
-            "official figure may not. Useful for spotting extract lag, not as a reconciliation."
+            "Achievement is counted fresh from the data extract currently loaded and "
+            "filtered, so it moves with the sidebar filters and includes unverified / "
+            "in-progress records. The programme's own reported figure is not used here."
         )
+        _tbl = tv[["district1", "target", "live_extract_count", "pct_live"]].copy()
+        _tbl["gap"] = _tbl["target"] - _tbl["live_extract_count"]
+        _tbl["pct_live"] = _tbl["pct_live"].round(1)
         st.dataframe(
-            tv[["district1", "target", "achieved_official", "pct_official", "live_extract_count"]]
-            .rename(columns={
+            _tbl.rename(columns={
                 "district1": "District", "target": "Target",
-                "achieved_official": "Achieved (official)", "pct_official": "% (official)",
-                "live_extract_count": "Live extract count",
+                "live_extract_count": "Achieved (live count)",
+                "pct_live": "% achieved", "gap": "Gap to target",
             }),
             width='stretch', hide_index=True,
         )
