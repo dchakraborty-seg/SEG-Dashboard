@@ -619,7 +619,6 @@ if "agency" in fdf.columns:
     agency_agg = fdf.groupby("agency").agg(
         onboarded=("ID", "nunique") if "ID" in fdf.columns else ("agency", "size"),
         jobs_created=("total_employees", "sum"),
-        jobs_created For Women=("number_of_female_employees", "sum"),
         green_pct=("is_green_flag", "mean"),
         loan_mobilized=("total_loan_amount", "sum"),
     ).reset_index()
