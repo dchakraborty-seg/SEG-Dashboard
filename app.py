@@ -62,9 +62,9 @@ GREEN    = "#00A758"   # confirmed / positive
 # legible in grayscale print because the ramp also varies in lightness.
 BRAND_COLORWAY = [DEEP, CYAN, NAVY, SKY, AMBER, GREEN, CORAL, "#8C9BA8"]
 
-DISPLAY_FONT = "'Inter', 'Helvetica Neue', Arial, sans-serif"
-BODY_FONT = "'Inter', 'Helvetica Neue', Arial, sans-serif"
-MONO_FONT = "'Inter', 'Helvetica Neue', Arial, sans-serif"   # tabular figures
+DISPLAY_FONT = "'Archivo', 'Helvetica Neue', Arial, sans-serif"
+BODY_FONT = "'Public Sans', 'Helvetica Neue', Arial, sans-serif"
+MONO_FONT = "'Archivo', 'Helvetica Neue', Arial, sans-serif"   # tabular figures
 
 pio.templates["mck_brand"] = go.layout.Template(
     layout=go.Layout(
@@ -123,10 +123,16 @@ def section(number: str, title: str, standfirst: str = ""):
 def inject_theme():
     st.markdown(f"""
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html, body, [class*="css"] {{ font-family: {BODY_FONT}; color: {INK}; }}
-        .stApp {{ background-color: {PAPER}; }}
+        .stApp,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stMain"],
+        [data-testid="stMainBlockContainer"],
+        [data-testid="stBottomBlockContainer"] {{
+            background-color: #FFFFFF !important;
+        }}
         /* Streamlit's toolbar floats over the canvas — without this the first
            element is sheared off at the top of the page. */
         header[data-testid="stHeader"] {{
@@ -138,7 +144,7 @@ def inject_theme():
         [data-testid="stHorizontalBlock"] {{ gap: 0.9rem; align-items: stretch; }}
 
         /* ---- Typography ------------------------------------------------ */
-        h1, h2, h3 {{ font-family: {BODY_FONT} !important; color: {DEEP} !important;
+        h1, h2, h3 {{ font-family: {DISPLAY_FONT} !important; color: {DEEP} !important;
                       letter-spacing: -0.015em; }}
         /* Chart titles: small, quiet, with a hairline underneath — the label
            sits above the chart rather than competing with it. */
@@ -163,7 +169,7 @@ def inject_theme():
             margin-top: 0.12rem;
         }}
         .mck-section-title {{
-            font-family: {BODY_FONT}; font-size: 0.86rem; font-weight: 700;
+            font-family: {DISPLAY_FONT}; font-size: 0.86rem; font-weight: 700;
             color: {DEEP}; line-height: 1.25; letter-spacing: 0.14em;
             text-transform: uppercase;
         }}
@@ -329,7 +335,7 @@ def inject_theme():
             text-transform: uppercase; color: {MUTED}; margin-bottom: 0.5rem;
         }}
         .mck-masthead h1 {{
-            font-family: {BODY_FONT} !important; color: {DEEP} !important;
+            font-family: {DISPLAY_FONT} !important; color: {DEEP} !important;
             font-size: 1.5rem !important; font-weight: 700 !important;
             margin: 0 !important; line-height: 1.15;
             letter-spacing: -0.035em; border-bottom: none !important;
@@ -604,30 +610,18 @@ if len(melt_cols):
 st.subheader("Investment vs. Loan Amount by Sector")
 if {"total_investment", "total_loan_amount", "sector1"}.issubset(fdf.columns):
     plot_df = fdf.dropna(subset=["total_investment", "total_loan_amount", "sector1"])
-    tab_a, tab_b = st.tabs(["Scatter", "Box plot"])
-    with tab_a:
-        fig = px.scatter(
-            plot_df, x="total_investment", y="total_loan_amount", color="sector1",
-            opacity=0.55, template=PLOTLY_TEMPLATE, color_discrete_sequence=COLOR_SEQ,
-            labels={"total_investment": "Total Investment (₹)", "total_loan_amount": "Total Loan Amount (₹)"},
-            hover_data=["district1", "agency"] if {"district1", "agency"}.issubset(plot_df.columns) else None,
-        )
-        show(fig)
-    with tab_b:
-        melt = plot_df.melt(id_vars="sector1", value_vars=["total_investment", "total_loan_amount"],
-                             var_name="metric", value_name="amount")
-        fig = px.box(
-            melt, x="sector1", y="amount", color="metric", template=PLOTLY_TEMPLATE,
-            color_discrete_sequence=COLOR_SEQ, points=False,
-            labels={"amount": "Amount (₹)", "sector1": "Sector"},
-        )
-        show(fig)
+    melt = plot_df.melt(id_vars="sector1", value_vars=["total_investment", "total_loan_amount"],
+                         var_name="metric", value_name="amount")
+    fig = px.box(
+        melt, x="sector1", y="amount", color="metric", template=PLOTLY_TEMPLATE,
+        color_discrete_sequence=COLOR_SEQ, points=False,
+        labels={"amount": "Amount (₹)", "sector1": "Sector"},
+    )
+    show(fig, height=380)
 
 st.subheader("Loan-to-Savings Ratio")
 if {"total_loan_amount", "individual_saving_invested"}.issubset(fdf.columns):
-    ratio_dim = st.radio("Break down by", ["sector1", "district1"], horizontal=True,
-                          format_func=lambda x: "Sector" if x == "sector1" else "District",
-                          key="ratio_dim")
+    ratio_dim = "sector1"
     if ratio_dim in fdf.columns:
         ratio_agg = fdf.groupby(ratio_dim).agg(
             loan=("total_loan_amount", "sum"),
@@ -639,7 +633,7 @@ if {"total_loan_amount", "individual_saving_invested"}.issubset(fdf.columns):
         fig = px.bar(
             ratio_agg, x="ratio", y=ratio_dim, orientation="h", template=PLOTLY_TEMPLATE,
             color_discrete_sequence=[CORAL],
-            labels={"ratio": "Loan ÷ Savings", ratio_dim: "Sector" if ratio_dim == "sector1" else "District"},
+            labels={"ratio": "Loan ÷ Savings", ratio_dim: "Sector"},
         )
         fig.add_vline(x=1, line_dash="dash", line_color="gray",
                        annotation_text="1:1 (loan = savings)", annotation_position="top")
@@ -774,10 +768,9 @@ else:
     st.caption("No agency field available for the current filter selection.")
 
 st.divider()
-st.subheader("District / Agency Comparison")
+st.subheader("District Comparison")
 
-geo_dim = st.radio("Break down by", ["district1", "agency"], horizontal=True,
-                    format_func=lambda x: "District" if x == "district1" else "Agency")
+geo_dim = "district1"
 
 if geo_dim in fdf.columns:
     agg = fdf.groupby(geo_dim).agg(
@@ -808,7 +801,7 @@ if geo_dim in fdf.columns:
         fig.update_layout(yaxis_title="", xaxis_title="")
         show(fig)
 
-st.subheader(f"Data quality status by {'district' if geo_dim=='district1' else 'agency'}")
+st.subheader("Data quality status by district")
 if "verification_status" in fdf.columns:
     qc = fdf.groupby([geo_dim, "verification_status"]).size().reset_index(name="count")
     fig = px.bar(qc, x=geo_dim, y="count", color="verification_status", barmode="stack",
