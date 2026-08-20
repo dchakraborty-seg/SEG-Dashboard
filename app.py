@@ -51,8 +51,12 @@ INK      = "#0B1B2B"   # primary text
 MUTED    = "#5A6874"   # secondary text, captions
 GRAY     = "#C4CDD5"   # baseline / target / inactive series
 LINE     = "#E1E6EA"   # hairlines, card borders, gridlines
-PAPER    = "#FFFFFF"   # page background
-WASH     = "#F4F7F9"   # faint wash for banded rows
+PAGE     = "#0B1B2B"   # dark canvas the whole app sits on
+PANEL    = "#06131F"   # sidebar — one step darker than the canvas
+PAPER    = "#FFFFFF"   # content surfaces (charts, tiles, tables)
+ON_DARK  = "#E4ECF2"   # primary text on the dark canvas
+ON_DARK_M = "#8FA5B8"  # secondary text on the dark canvas
+HAIR_D   = "rgba(255,255,255,0.14)"   # hairlines on the dark canvas
 CARD     = "#FFFFFF"   # card background
 AMBER    = "#D98E04"   # attention / pending
 CORAL    = "#C0392B"   # exception / negative — semantic only
@@ -74,9 +78,9 @@ pio.templates["mck_brand"] = go.layout.Template(
         legend=dict(font=dict(size=11, color=MUTED), bgcolor="rgba(0,0,0,0)",
                     orientation="h", yanchor="bottom", y=1.02, x=0,
                     title=dict(text="")),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(t=34, l=4, r=8, b=4),
+        paper_bgcolor=PAPER,
+        plot_bgcolor=PAPER,
+        margin=dict(t=44, l=52, r=26, b=42),
         hoverlabel=dict(bgcolor=DEEP, bordercolor=DEEP,
                         font=dict(family=BODY_FONT, color="#FFFFFF", size=12)),
         # Consulting-chart convention: no vertical gridlines, hairline
@@ -131,28 +135,30 @@ def inject_theme():
         [data-testid="stMain"],
         [data-testid="stMainBlockContainer"],
         [data-testid="stBottomBlockContainer"] {{
-            background-color: #FFFFFF !important;
+            background-color: {PAGE} !important;
         }}
+        html, body, [class*="css"] {{ color: {ON_DARK}; }}
         /* Streamlit's toolbar floats over the canvas — without this the first
            element is sheared off at the top of the page. */
         header[data-testid="stHeader"] {{
-            background: {PAPER} !important; height: 3rem;
-            border-bottom: 1px solid {LINE};
+            background: {PAGE} !important; height: 3rem;
+            border-bottom: 1px solid {HAIR_D};
         }}
+        header[data-testid="stHeader"] * {{ color: {ON_DARK} !important; fill: {ON_DARK} !important; }}
         .block-container {{ padding-top: 4.2rem; padding-bottom: 2rem; max-width: 1560px; }}
         [data-testid="stVerticalBlock"] {{ gap: 0.7rem; }}
         [data-testid="stHorizontalBlock"] {{ gap: 0.9rem; align-items: stretch; }}
 
         /* ---- Typography ------------------------------------------------ */
-        h1, h2, h3 {{ font-family: {DISPLAY_FONT} !important; color: {DEEP} !important;
+        h1, h2, h3 {{ font-family: {DISPLAY_FONT} !important; color: {ON_DARK} !important;
                       letter-spacing: -0.015em; }}
         /* Chart titles: small, quiet, with a hairline underneath — the label
            sits above the chart rather than competing with it. */
         h3 {{
             font-size: 0.86rem !important; font-weight: 600 !important;
-            text-transform: none; color: {DEEP} !important;
-            margin: 1.3rem 0 0.15rem 0 !important; padding-bottom: 0.4rem;
-            border-bottom: 1px solid {LINE};
+            text-transform: none; color: {ON_DARK} !important;
+            margin: 1.4rem 0 0.3rem 0 !important; padding-bottom: 0.4rem;
+            border-bottom: 1px solid {HAIR_D};
         }}
 
         /* ---- Section rule ---------------------------------------------- */
@@ -163,24 +169,56 @@ def inject_theme():
         }}
         .mck-section-num {{
             font-family: {BODY_FONT}; font-size: 0.66rem; font-weight: 700;
-            color: #FFFFFF; background: {DEEP}; letter-spacing: 0.08em;
+            color: {PAGE}; background: {CYAN}; letter-spacing: 0.08em;
             padding: 0.28rem 0.45rem; line-height: 1;
             font-variant-numeric: tabular-nums; flex: 0 0 auto;
             margin-top: 0.12rem;
         }}
         .mck-section-title {{
             font-family: {DISPLAY_FONT}; font-size: 0.86rem; font-weight: 700;
-            color: {DEEP}; line-height: 1.25; letter-spacing: 0.14em;
+            color: #FFFFFF; line-height: 1.25; letter-spacing: 0.14em;
             text-transform: uppercase;
         }}
         .mck-section-sub {{
-            font-size: 0.79rem; color: {MUTED}; margin-top: 0.25rem; max-width: 78ch;
+            font-size: 0.79rem; color: {ON_DARK_M}; margin-top: 0.25rem; max-width: 78ch;
         }}
 
         /* ---- Sidebar ---------------------------------------------------- */
         section[data-testid="stSidebar"] {{
-            background-color: {DEEP};
-            border-right: 1px solid {DEEP};
+            background-color: {PANEL};
+            border-right: 1px solid {HAIR_D};
+        }}
+        /* ---- Filter panel ------------------------------------------------
+           Grouped under tracked rules, with a live status block and a reset,
+           so the panel reads as a control surface rather than a stack of
+           identical dropdowns. */
+        .flt-head {{
+            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em;
+            text-transform: uppercase; color: #FFFFFF;
+            padding: 0.9rem 0 0.5rem 0; margin-top: 0.6rem;
+            border-bottom: 2px solid {CYAN};
+        }}
+        .flt-group {{
+            font-size: 0.6rem; font-weight: 700; letter-spacing: 0.18em;
+            text-transform: uppercase; color: {SKY};
+            margin: 1.25rem 0 0.1rem 0; padding-bottom: 0.3rem;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+        }}
+        .flt-status {{
+            display: flex; gap: 0.5rem; margin: 1.3rem 0 0.6rem 0;
+        }}
+        .flt-status div {{
+            flex: 1; background: rgba(255,255,255,0.06);
+            border-left: 2px solid {CYAN}; padding: 0.45rem 0.6rem;
+        }}
+        .flt-status span {{
+            display: block; font-size: 0.55rem; font-weight: 700;
+            letter-spacing: 0.14em; text-transform: uppercase; color: {SKY};
+        }}
+        .flt-status b {{
+            display: block; font-family: {DISPLAY_FONT}; font-size: 1.05rem;
+            font-weight: 700; color: #FFFFFF; font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em; margin-top: 0.1rem;
         }}
         section[data-testid="stSidebar"] * {{ color: #E8EDF2 !important; }}
         section[data-testid="stSidebar"] h1 {{
@@ -212,9 +250,15 @@ def inject_theme():
         }}
         section[data-testid="stSidebar"] hr {{ border-color: rgba(255,255,255,0.14); }}
         section[data-testid="stSidebar"] button {{
-            border-radius: 2px !important; border: 1px solid {CYAN} !important;
+            border-radius: 0 !important; border: 1px solid {CYAN} !important;
             background: transparent !important; font-weight: 600;
+            font-size: 0.7rem !important; letter-spacing: 0.1em;
+            text-transform: uppercase; padding: 0.35rem 0.6rem !important;
         }}
+        section[data-testid="stSidebar"] button:hover {{
+            background: {CYAN} !important;
+        }}
+        section[data-testid="stSidebar"] button:hover * {{ color: {PAGE} !important; }}
 
         /* ---- KPI blocks -------------------------------------------------
            Flat tiles with a top keyline instead of rounded, shadowed cards.
@@ -222,19 +266,16 @@ def inject_theme():
         /* Figures read as one continuous strip divided by hairlines, rather
            than as separate floating cards. */
         div[data-testid="stMetric"] {{
-            background-color: transparent;
-            border: none;
-            border-left: 1px solid {LINE};
+            background-color: {PAPER};
+            border: none; border-top: 3px solid {CYAN};
             border-radius: 0;
-            padding: 0.1rem 1rem 0.5rem 1.1rem;
-            box-shadow: none;
-        }}
-        div[data-testid="stColumn"]:first-child div[data-testid="stMetric"] {{
-            border-left: none; padding-left: 0;
+            padding: 0.8rem 1rem 0.85rem 1rem;
+            box-shadow: none; height: 100%;
         }}
         div[data-testid="stMetricLabel"] {{
             font-family: {BODY_FONT}; font-size: 0.68rem !important;
             text-transform: uppercase; letter-spacing: 0.1em; color: {MUTED} !important;
+            /* label stays dark: the tile itself is a light surface */
             font-weight: 600 !important; white-space: normal !important; line-height: 1.35;
         }}
         div[data-testid="stMetricValue"] {{
@@ -259,39 +300,45 @@ def inject_theme():
         div[data-testid="stMetricDelta"] svg {{ display: none; }}
 
         /* ---- Tabs -------------------------------------------------------- */
-        .stTabs [data-baseweb="tab-list"] {{ gap: 1.4rem; border-bottom: 1px solid {LINE}; }}
+        .stTabs [data-baseweb="tab-list"] {{ gap: 1.4rem; border-bottom: 1px solid {HAIR_D}; }}
         .stTabs [data-baseweb="tab"] {{
             font-family: {BODY_FONT}; font-weight: 600; font-size: 0.78rem;
-            text-transform: uppercase; letter-spacing: 0.08em; color: {MUTED};
+            text-transform: uppercase; letter-spacing: 0.08em; color: {ON_DARK_M};
             padding: 0.35rem 0; background: transparent;
         }}
-        .stTabs [aria-selected="true"] {{ color: {DEEP} !important; }}
+        .stTabs [aria-selected="true"] {{ color: #FFFFFF !important; }}
         .stTabs [data-baseweb="tab-highlight"] {{ background-color: {CYAN} !important; height: 2px; }}
         .stTabs [data-baseweb="tab-border"] {{ display: none; }}
 
         /* ---- Controls ---------------------------------------------------- */
         .stRadio label, .stSelectbox label {{
             font-size: 0.74rem !important; font-weight: 600 !important;
-            text-transform: uppercase; letter-spacing: 0.08em; color: {MUTED} !important;
+            text-transform: uppercase; letter-spacing: 0.08em; color: {ON_DARK_M} !important;
         }}
+        [data-testid="stMain"] div[data-baseweb="select"] > div {{
+            background: {PAPER} !important; color: {INK} !important;
+        }}
+        [data-testid="stMain"] div[data-baseweb="select"] * {{ color: {INK} !important; }}
+        [data-testid="stMain"] .stRadio [role="radiogroup"] label * {{ color: {ON_DARK} !important; }}
         .stRadio [role="radiogroup"] {{ gap: 1.1rem; }}
         div[data-baseweb="select"] > div {{ border-radius: 2px !important; border-color: {LINE} !important; }}
 
         /* ---- Data & containers -------------------------------------------- */
-        div[data-testid="stDataFrame"] {{ border: none; border-top: 1px solid {LINE}; border-radius: 0; }}
+        div[data-testid="stDataFrame"] {{ border: none; border-radius: 0; background: {PAPER}; }}
         div[data-testid="stExpander"] {{
-            border: none !important; border-top: 1px solid {LINE} !important;
-            border-radius: 0 !important; background: {CARD};
+            border: none !important; border-top: 2px solid {CYAN} !important;
+            border-radius: 0 !important; background: {PAPER};
         }}
         div[data-testid="stExpander"] summary {{
             font-size: 0.8rem; font-weight: 600; color: {DEEP};
         }}
+        div[data-testid="stExpander"] * {{ color: {INK}; }}
         .stCaption, [data-testid="stCaptionContainer"] {{
-            color: {MUTED} !important; font-size: 0.76rem !important; line-height: 1.5;
+            color: {ON_DARK_M} !important; font-size: 0.76rem !important; line-height: 1.5;
         }}
-        hr {{ border-color: {LINE} !important; }}
+        hr {{ border-color: {HAIR_D} !important; }}
         div[data-testid="stAlert"] {{
-            border-radius: 0 !important; background: {CARD} !important;
+            border-radius: 0 !important; background: rgba(255,255,255,0.05) !important;
             border: none !important; border-left: 3px solid {CYAN} !important;
             box-shadow: none !important; padding: 0.65rem 0.9rem !important;
         }}
@@ -307,7 +354,7 @@ def inject_theme():
             padding: 0 !important;
         }}
         div[data-testid="stAlert"] * {{
-            color: {INK} !important; font-size: 0.79rem !important;
+            color: {ON_DARK} !important; font-size: 0.79rem !important;
             fill: {MUTED} !important; line-height: 1.45 !important;
         }}
         section[data-testid="stSidebar"] div[data-testid="stAlert"] {{
@@ -327,40 +374,40 @@ def inject_theme():
         .mck-masthead {{
             display: flex; justify-content: space-between; align-items: flex-end;
             gap: 3rem; flex-wrap: wrap;
-            border-bottom: 1px solid {LINE};
+            border-bottom: 1px solid {HAIR_D};
             padding: 0 0 0.9rem 0; margin: 0 0 0.2rem 0;
         }}
         .mck-eyebrow {{
             font-size: 0.64rem; font-weight: 700; letter-spacing: 0.2em;
-            text-transform: uppercase; color: {MUTED}; margin-bottom: 0.5rem;
+            text-transform: uppercase; color: {CYAN}; margin-bottom: 0.5rem;
         }}
         .mck-masthead h1 {{
             font-family: {DISPLAY_FONT} !important; color: {DEEP} !important;
             font-size: 1.5rem !important; font-weight: 700 !important;
-            margin: 0 !important; line-height: 1.15;
+            margin: 0 !important; line-height: 1.15; color: #FFFFFF !important;
             letter-spacing: -0.035em; border-bottom: none !important;
         }}
         .mck-masthead p {{
-            color: {MUTED} !important; font-family: {BODY_FONT};
+            color: {ON_DARK_M} !important; font-family: {BODY_FONT};
             font-size: 0.8rem; margin: 0.35rem 0 0 0; max-width: 74ch;
         }}
         /* Run parameters: label over value, separated by hairline rules. */
         .mck-runmeta {{ display: flex; gap: 0; flex-wrap: wrap; }}
         .mck-runmeta div {{
-            padding: 0 1rem; border-left: 1px solid {LINE};
-            font-size: 0.6rem; color: {MUTED}; letter-spacing: 0.14em;
+            padding: 0 1rem; border-left: 1px solid {HAIR_D};
+            font-size: 0.6rem; color: {ON_DARK_M}; letter-spacing: 0.14em;
             text-transform: uppercase; font-weight: 700; line-height: 1.6;
         }}
         .mck-runmeta div:first-child {{ border-left: none; padding-left: 0; }}
         .mck-runmeta b {{
-            display: block; color: {DEEP}; font-size: 0.9rem; font-weight: 600;
+            display: block; color: #FFFFFF; font-size: 0.9rem; font-weight: 600;
             font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
             text-transform: none;
         }}
 
         .mck-footer {{
-            margin-top: 3.2rem; padding-top: 0.9rem; border-top: 2px solid {DEEP};
-            font-family: {BODY_FONT}; font-size: 0.72rem; color: {MUTED};
+            margin-top: 3.2rem; padding-top: 0.9rem; border-top: 1px solid {HAIR_D};
+            font-family: {BODY_FONT}; font-size: 0.72rem; color: {ON_DARK_M};
             display: flex; justify-content: space-between; letter-spacing: 0.02em;
         }}
     </style>
@@ -435,35 +482,53 @@ if not df["date_valid"].all():
 # 1. Global filters
 # ---------------------------------------------------------------------------
 
-st.sidebar.header("Filters")
+FILTER_KEYS = ["fk_district", "fk_block", "fk_village", "fk_agency",
+               "fk_coord", "fk_phase", "fk_fy", "fk_dates"]
 
-def multiselect_sorted(label, col, container=st.sidebar):
+
+def filter_group(label: str):
+    """Small tracked rule that splits the panel into scannable groups."""
+    st.sidebar.markdown(f'<div class="flt-group">{label}</div>', unsafe_allow_html=True)
+
+
+def reset_filters():
+    for key in FILTER_KEYS:
+        st.session_state.pop(key, None)
+
+
+def multiselect_sorted(label, col, key, container=st.sidebar):
     opts = sorted(df[col].dropna().unique().tolist()) if col in df.columns else []
-    return container.multiselect(label, opts)
+    return container.multiselect(label, opts, key=key)
 
-f_districts = multiselect_sorted("District", "district1")
+
+st.sidebar.markdown('<div class="flt-head">Filters</div>', unsafe_allow_html=True)
+
+filter_group("Geography")
+f_districts = multiselect_sorted("District", "district1", "fk_district")
 
 # cascading block -> village based on selected districts
 _block_pool = df[df["district1"].isin(f_districts)] if f_districts else df
 f_blocks = st.sidebar.multiselect(
-    "Block", sorted(_block_pool["block"].dropna().unique().tolist())
+    "Block", sorted(_block_pool["block"].dropna().unique().tolist()), key="fk_block"
 )
 
 _village_pool = _block_pool[_block_pool["block"].isin(f_blocks)] if f_blocks else _block_pool
 f_villages = st.sidebar.multiselect(
-    "Village", sorted(_village_pool["village"].dropna().unique().tolist())
+    "Village", sorted(_village_pool["village"].dropna().unique().tolist()), key="fk_village"
 )
 
-f_agencies = multiselect_sorted("Agency", "agency")
-f_coordinators = multiselect_sorted("Field Coordinator", "name_of_field_coordinator")
-f_phases = multiselect_sorted("Phase", "phase")
+filter_group("Delivery")
+f_agencies = multiselect_sorted("Agency", "agency", "fk_agency")
+f_coordinators = multiselect_sorted("Field Coordinator", "name_of_field_coordinator", "fk_coord")
+f_phases = multiselect_sorted("Phase", "phase", "fk_phase")
 
+filter_group("Period")
 fy_opts = sorted([x for x in df["financial_year"].dropna().unique()])
-f_fys = st.sidebar.multiselect("Financial Year", fy_opts)
+f_fys = st.sidebar.multiselect("Financial Year", fy_opts, key="fk_fy")
 
 min_d, max_d = df[DATE_COL].min(), df[DATE_COL].max()
 f_date_range = st.sidebar.date_input(
-    "Onboarding date range", value=(), min_value=min_d, max_value=max_d
+    "Onboarding date range", value=(), min_value=min_d, max_value=max_d, key="fk_dates"
 )
 f_date_range = f_date_range if isinstance(f_date_range, tuple) and len(f_date_range) == 2 else None
 
@@ -474,7 +539,17 @@ fdf = apply_filters(
     financial_years=f_fys, phases=f_phases, date_range=f_date_range,
 )
 
-st.sidebar.caption(f"**{len(fdf):,}** records match current filters")
+_n_active = sum(bool(x) for x in [f_districts, f_blocks, f_villages, f_agencies,
+                                  f_coordinators, f_phases, f_fys, f_date_range])
+st.sidebar.markdown(
+    f'''<div class="flt-status">
+         <div><span>Active filters</span><b>{_n_active}</b></div>
+         <div><span>Matching records</span><b>{len(fdf):,}</b></div>
+       </div>''',
+    unsafe_allow_html=True,
+)
+st.sidebar.button("Clear all filters", on_click=reset_filters, width='stretch')
+
 
 _generated_at = pd.Timestamp.now().strftime("%d %b %Y, %H:%M")
 _active_filters = sum(bool(x) for x in [f_districts, f_blocks, f_villages, f_agencies,
