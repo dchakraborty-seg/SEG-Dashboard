@@ -31,7 +31,7 @@ from data_utils import load_data, apply_filters, split_multiselect_counts, DATE_
 from kpi_utils import compute_kpis, format_indian_number
 from targets_utils import target_vs_achieved, METRIC_LABELS
 
-st.set_page_config(page_title="WEE / M&E Dashboard", layout="wide", page_icon="📊")
+st.set_page_config(page_title="SEG / M&E Dashboard", layout="wide", page_icon="📊")
 
 # ---------------------------------------------------------------------------
 # Brand tokens — single source of truth for every color/font in the app.
@@ -373,7 +373,7 @@ st.markdown(f"""
 <div class="mck-masthead">
     <div>
         <div class="mck-eyebrow">Monitoring &amp; Evaluation &middot; Sustainable Entrepreneurship Group</div>
-        <h1>Women's Economic Empowerment</h1>
+        <h1>SEG Data Dashboard</h1>
         <p>Executive progress, financial, sector, geographic, temporal and sustainability views.
         Every figure responds to the filters set in the left panel.</p>
     </div>
