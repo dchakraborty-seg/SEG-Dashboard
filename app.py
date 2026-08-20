@@ -397,7 +397,7 @@ k = compute_kpis(fdf)
 r1 = st.columns(4)
 r1[0].metric("Total Entrepreneurs", f"{k['total_entrepreneurs']:,}")
 r1[1].metric("Jobs Created", f"{k['total_jobs_created']:,.0f}")
-r1[2].metric("Jobs created For Women", f"{k['number_of_female_employees']:,.0f}")
+r1[2].metric("Women’s Jobs Created", f"{k['number_of_female_employees']:,.0f}")
 r1[3].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%", f"{k['data_correct_rate_pct']:.1f}% flagged correct")
 
 r2 = st.columns(4)
@@ -406,7 +406,7 @@ r2[1].metric("High-Growth Enterprises", f"{k['high_growth_enterprises']:,}", "> 
 r2[2].metric("Green Enterprises", f"{k['green_enterprises']:,}", f"{k['green_pct']:.1f}% of total")
 r2[3].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} t")
 
-r3 = st.columns(1)
+r3 = st.columns(3)
 r3[0].metric("Total Savings Invested", format_indian_number(k['total_savings_invested']))
 r3[1].metric("Total Loan Mobilized", format_indian_number(k['total_loan_mobilized']))
 r3[2].metric("Total Finance Unlocked", format_indian_number(k['total_investment']))
