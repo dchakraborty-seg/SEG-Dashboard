@@ -397,7 +397,7 @@ k = compute_kpis(fdf)
 r1 = st.columns(4)
 r1[0].metric("Total Entrepreneurs", f"{k['total_entrepreneurs']:,}")
 r1[1].metric("Jobs Created", f"{k['total_jobs_created']:,.0f}")
-r1[2].metric("Total Loan Mobilized", format_indian_number(k['total_loan_mobilized']))
+r1[2].metric("jobs_created For Women", f"{k['number_of_female_employees']:,.0f}")
 r1[3].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%", f"{k['data_correct_rate_pct']:.1f}% flagged correct")
 
 r2 = st.columns(4)
@@ -408,7 +408,8 @@ r2[3].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} 
 
 r3 = st.columns(1)
 r3[0].metric("Total Savings Invested", format_indian_number(k['total_savings_invested']))
-
+r3[1].metric("Total Loan Mobilized", format_indian_number(k['total_loan_mobilized']))
+r3[2].metric("Total Finance Unlocked", format_indian_number(k['total_investment']))
 
 # ---------------------------------------------------------------------------
 # 3. Section 2 — Financial & Loan Breakdown
@@ -618,6 +619,7 @@ if "agency" in fdf.columns:
     agency_agg = fdf.groupby("agency").agg(
         onboarded=("ID", "nunique") if "ID" in fdf.columns else ("agency", "size"),
         jobs_created=("total_employees", "sum"),
+        jobs_created For Women=("number_of_female_employees", "sum"),
         green_pct=("is_green_flag", "mean"),
         loan_mobilized=("total_loan_amount", "sum"),
     ).reset_index()
