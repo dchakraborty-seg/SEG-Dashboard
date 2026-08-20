@@ -51,7 +51,8 @@ INK      = "#0B1B2B"   # primary text
 MUTED    = "#5A6874"   # secondary text, captions
 GRAY     = "#C4CDD5"   # baseline / target / inactive series
 LINE     = "#E1E6EA"   # hairlines, card borders, gridlines
-PAPER    = "#F2F4F6"   # page background
+PAPER    = "#FFFFFF"   # page background
+WASH     = "#F4F7F9"   # faint wash for banded rows
 CARD     = "#FFFFFF"   # card background
 AMBER    = "#D98E04"   # attention / pending
 CORAL    = "#C0392B"   # exception / negative — semantic only
@@ -126,7 +127,13 @@ def inject_theme():
     <style>
         html, body, [class*="css"] {{ font-family: {BODY_FONT}; color: {INK}; }}
         .stApp {{ background-color: {PAPER}; }}
-        .block-container {{ padding-top: 1.2rem; padding-bottom: 2rem; max-width: 1560px; }}
+        /* Streamlit's toolbar floats over the canvas — without this the first
+           element is sheared off at the top of the page. */
+        header[data-testid="stHeader"] {{
+            background: {PAPER} !important; height: 3rem;
+            border-bottom: 1px solid {LINE};
+        }}
+        .block-container {{ padding-top: 4.2rem; padding-bottom: 2rem; max-width: 1560px; }}
         [data-testid="stVerticalBlock"] {{ gap: 0.7rem; }}
         [data-testid="stHorizontalBlock"] {{ gap: 0.9rem; align-items: stretch; }}
 
@@ -144,21 +151,24 @@ def inject_theme():
 
         /* ---- Section rule ---------------------------------------------- */
         .mck-section {{
-            display: flex; align-items: baseline; gap: 0.9rem;
-            margin: 2.1rem 0 0.9rem 0; padding-top: 0.7rem;
-            border-top: 2px solid {DEEP};
+            display: flex; align-items: flex-start; gap: 0.75rem;
+            margin: 2.4rem 0 1rem 0; padding: 0;
+            border-top: none;
         }}
         .mck-section-num {{
-            font-family: {BODY_FONT}; font-size: 0.78rem; font-weight: 700;
-            color: {CYAN}; letter-spacing: 0.12em; padding-top: 0.15rem;
-            font-variant-numeric: tabular-nums;
+            font-family: {BODY_FONT}; font-size: 0.66rem; font-weight: 700;
+            color: #FFFFFF; background: {DEEP}; letter-spacing: 0.08em;
+            padding: 0.28rem 0.45rem; line-height: 1;
+            font-variant-numeric: tabular-nums; flex: 0 0 auto;
+            margin-top: 0.12rem;
         }}
         .mck-section-title {{
-            font-family: {BODY_FONT}; font-size: 1.12rem; font-weight: 700;
-            color: {DEEP}; line-height: 1.2; letter-spacing: -0.02em;
+            font-family: {BODY_FONT}; font-size: 0.86rem; font-weight: 700;
+            color: {DEEP}; line-height: 1.25; letter-spacing: 0.14em;
+            text-transform: uppercase;
         }}
         .mck-section-sub {{
-            font-size: 0.82rem; color: {MUTED}; margin-top: 0.2rem; max-width: 78ch;
+            font-size: 0.79rem; color: {MUTED}; margin-top: 0.25rem; max-width: 78ch;
         }}
 
         /* ---- Sidebar ---------------------------------------------------- */
@@ -203,16 +213,19 @@ def inject_theme():
         /* ---- KPI blocks -------------------------------------------------
            Flat tiles with a top keyline instead of rounded, shadowed cards.
            Value uses tabular figures so columns of numbers align optically. */
+        /* Figures read as one continuous strip divided by hairlines, rather
+           than as separate floating cards. */
         div[data-testid="stMetric"] {{
-            background-color: {CARD};
+            background-color: transparent;
             border: none;
-            border-top: 3px solid {DEEP};
+            border-left: 1px solid {LINE};
             border-radius: 0;
-            padding: 0.7rem 0.9rem 0.75rem 0.9rem;
+            padding: 0.1rem 1rem 0.5rem 1.1rem;
             box-shadow: none;
-            transition: border-top-color 120ms ease;
         }}
-        div[data-testid="stMetric"]:hover {{ border-top-color: {CYAN}; }}
+        div[data-testid="stColumn"]:first-child div[data-testid="stMetric"] {{
+            border-left: none; padding-left: 0;
+        }}
         div[data-testid="stMetricLabel"] {{
             font-family: {BODY_FONT}; font-size: 0.68rem !important;
             text-transform: uppercase; letter-spacing: 0.1em; color: {MUTED} !important;
@@ -222,7 +235,7 @@ def inject_theme():
             font-family: {MONO_FONT}; color: {DEEP} !important; font-weight: 600 !important;
             font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
             white-space: normal !important; overflow-wrap: break-word;
-            font-size: 1.5rem !important; line-height: 1.1; margin-top: 0.1rem;
+            font-size: 1.75rem !important; line-height: 1.05; margin-top: 0.25rem;
         }}
         div[data-testid="stMetricDelta"] {{
             font-size: 0.72rem !important; font-weight: 500 !important;
@@ -303,39 +316,40 @@ def inject_theme():
         }}
 
         /* ---- Masthead ------------------------------------------------------
-           Flat deep-navy band with a cyan keyline and a metadata strip —
-           reads as a report cover page, not a gradient hero card. */
+           No dark hero band. A hairline-ruled masthead on white: title left,
+           run parameters right, the way a printed report states its scope. */
         .mck-masthead {{
-            background: {DEEP};
-            padding: 1.3rem 1.8rem 1.1rem 1.8rem;
-            margin-bottom: 0.4rem;
-            border-bottom: 3px solid {CYAN};
-            border-radius: 0;
+            display: flex; justify-content: space-between; align-items: flex-end;
+            gap: 3rem; flex-wrap: wrap;
+            border-bottom: 1px solid {LINE};
+            padding: 0 0 0.9rem 0; margin: 0 0 0.2rem 0;
         }}
         .mck-eyebrow {{
-            font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em;
-            text-transform: uppercase; color: {SKY}; margin-bottom: 0.55rem;
+            font-size: 0.64rem; font-weight: 700; letter-spacing: 0.2em;
+            text-transform: uppercase; color: {MUTED}; margin-bottom: 0.5rem;
         }}
         .mck-masthead h1 {{
-            font-family: {DISPLAY_FONT} !important; color: #FFFFFF !important;
-            font-size: 1.62rem !important; font-weight: 700 !important;
-            margin: 0 0 0.4rem 0 !important; line-height: 1.15;
+            font-family: {BODY_FONT} !important; color: {DEEP} !important;
+            font-size: 1.5rem !important; font-weight: 700 !important;
+            margin: 0 !important; line-height: 1.15;
             letter-spacing: -0.035em; border-bottom: none !important;
         }}
         .mck-masthead p {{
-            color: #A9BDCC !important; font-family: {BODY_FONT};
-            font-size: 0.86rem; margin: 0; max-width: 90ch;
+            color: {MUTED} !important; font-family: {BODY_FONT};
+            font-size: 0.8rem; margin: 0.35rem 0 0 0; max-width: 74ch;
         }}
-        .mck-metastrip {{
-            display: flex; gap: 2.2rem; flex-wrap: wrap;
-            background: {CARD}; border: none;
-            padding: 0.6rem 1.8rem; margin-bottom: 0.6rem;
+        /* Run parameters: label over value, separated by hairline rules. */
+        .mck-runmeta {{ display: flex; gap: 0; flex-wrap: wrap; }}
+        .mck-runmeta div {{
+            padding: 0 1rem; border-left: 1px solid {LINE};
+            font-size: 0.6rem; color: {MUTED}; letter-spacing: 0.14em;
+            text-transform: uppercase; font-weight: 700; line-height: 1.6;
         }}
-        .mck-metastrip div {{ font-size: 0.68rem; color: {MUTED}; letter-spacing: 0.06em;
-                              text-transform: uppercase; font-weight: 600; }}
-        .mck-metastrip b {{
-            display: block; color: {DEEP}; font-size: 0.86rem; font-weight: 600;
-            font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+        .mck-runmeta div:first-child {{ border-left: none; padding-left: 0; }}
+        .mck-runmeta b {{
+            display: block; color: {DEEP}; font-size: 0.9rem; font-weight: 600;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+            text-transform: none;
         }}
 
         .mck-footer {{
@@ -463,17 +477,19 @@ _coverage = f"{len(fdf) / max(len(df), 1) * 100:.0f}%"
 
 st.markdown(f"""
 <div class="mck-masthead">
-    <div class="mck-eyebrow">Monitoring &amp; Evaluation &middot; Sustainable Entrepreneurship Group</div>
-    <h1>Women's Economic Empowerment</h1>
-    <p>Executive progress, financial, sector, geographic, temporal and sustainability views.
-    Every figure below responds to the filters set in the left panel.</p>
-</div>
-<div class="mck-metastrip">
-    <div>Records in view<b>{len(fdf):,}</b></div>
-    <div>Share of extract<b>{_coverage}</b></div>
-    <div>Filters applied<b>{_active_filters}</b></div>
-    <div>Data source<b>{"Private repo sync" if using_remote else "Manual extract"}</b></div>
-    <div>Generated<b>{_generated_at}</b></div>
+    <div>
+        <div class="mck-eyebrow">Monitoring &amp; Evaluation &middot; Sustainable Entrepreneurship Group</div>
+        <h1>Women's Economic Empowerment</h1>
+        <p>Executive progress, financial, sector, geographic, temporal and sustainability views.
+        Every figure responds to the filters set in the left panel.</p>
+    </div>
+    <div class="mck-runmeta">
+        <div>Records<b>{len(fdf):,}</b></div>
+        <div>Of extract<b>{_coverage}</b></div>
+        <div>Filters<b>{_active_filters}</b></div>
+        <div>Source<b>{"Repo sync" if using_remote else "Manual"}</b></div>
+        <div>Generated<b>{_generated_at}</b></div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
