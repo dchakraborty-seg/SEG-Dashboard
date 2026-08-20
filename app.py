@@ -101,6 +101,24 @@ pio.templates["mck_brand"] = go.layout.Template(
 PLOTLY_TEMPLATE = "mck_brand"
 COLOR_SEQ = BRAND_COLORWAY
 
+# Chart toolbar: appears on hover, keeps zoom / pan / reset / PNG download,
+# drops the selection tools nobody uses on these charts. Exported PNGs get a
+# solid dark background — the charts are transparent on screen, which would
+# otherwise download as a transparent image with unreadable light text.
+PLOTLY_CONFIG = {
+    "displayModeBar": "hover",
+    "displaylogo": False,
+    "scrollZoom": False,
+    "modeBarButtonsToRemove": ["select2d", "lasso2d", "autoScale2d",
+                               "hoverClosestCartesian", "hoverCompareCartesian",
+                               "toggleSpikelines"],
+    "toImageButtonOptions": {
+        "format": "png",
+        "filename": "seg_dashboard_chart",
+        "scale": 2,
+    },
+}
+
 
 def compact_number(v) -> str:
     """Short label for a data point: crore / lakh for money-scale figures,
@@ -130,7 +148,9 @@ def show(fig, height: int = 340, labels: bool = True):
     Also stamps values onto every trace that can carry one — bars, pies,
     heatmap cells, line markers — so figures read without hovering."""
     fig.update_layout(height=height, hovermode="closest",
-                      bargap=0.28, bargroupgap=0.12)
+                      bargap=0.28, bargroupgap=0.12,
+                      modebar=dict(bgcolor="rgba(0,0,0,0)", color=ON_DARK_M,
+                                   activecolor=CYAN))
     fig.update_traces(marker_line_width=0, selector=dict(type="bar"))
 
     if labels:
@@ -163,7 +183,7 @@ def show(fig, height: int = 340, labels: bool = True):
             # outside labels need headroom or they clip at the plot edge
             fig.update_layout(margin=dict(t=44, l=8, r=48, b=8))
 
-    st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
+    st.plotly_chart(fig, width='stretch', config=PLOTLY_CONFIG)
 
 
 def section(number: str, title: str, standfirst: str = ""):
@@ -218,7 +238,7 @@ def inject_theme():
         section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] * {{ color: #BDEBFA !important; }}
         section[data-testid="stSidebar"] button {{ border-radius: 8px !important; border: 1px solid #31566C !important; background: transparent !important; font-weight: 700; }}
         section[data-testid="stSidebar"] button:hover {{ background: rgba(24,182,242,.12) !important; border-color: var(--cyan) !important; }}
-        .flt-head {{ display:flex; align-items:center; justify-content:space-betSEGn; font-size:.68rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:#fff; padding:.75rem 0 .55rem; border-bottom:1px solid var(--border); }}
+        .flt-head {{ display:flex; align-items:center; justify-content:space-between; font-size:.68rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:#fff; padding:.75rem 0 .55rem; border-bottom:1px solid var(--border); }}
         .flt-group {{ font-size:.61rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:{SKY}; margin:1.05rem 0 .25rem; }}
         .flt-status {{ display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin:1rem 0 .65rem; }}
         .flt-status div {{ background:#102638; border:1px solid #28465A; border-radius:9px; padding:.6rem .65rem; }}
@@ -226,7 +246,7 @@ def inject_theme():
         .flt-status b {{ display:block; color:#fff; font-size:1rem; margin-top:.15rem; }}
 
         /* Masthead */
-        .mck-masthead {{ display:flex; justify-content:space-betSEGn; align-items:flex-end; gap:2rem; flex-wrap:wrap; padding:0 0 1.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }}
+        .mck-masthead {{ display:flex; justify-content:space-between; align-items:flex-end; gap:2rem; flex-wrap:wrap; padding:0 0 1.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }}
         .mck-eyebrow {{ color:var(--cyan); font-size:.62rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; margin-bottom:.45rem; }}
         .mck-masthead h1 {{ font-size:2rem !important; font-weight:800 !important; margin:0 !important; line-height:1.08; }}
         .mck-masthead p {{ color:var(--muted) !important; font-size:.82rem; max-width:68ch; margin:.45rem 0 0; line-height:1.55; }}
@@ -250,7 +270,13 @@ def inject_theme():
         div[data-testid="stMetricDelta"] svg {{ display:none; }}
 
         /* Chart and data surfaces */
-        [data-testid="stPlotlyChart"] {{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:.3rem .3rem .1rem; box-shadow:0 8px 24px rgba(0,0,0,.10); }}
+        [data-testid="stPlotlyChart"] {{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:.3rem .3rem .1rem; box-shadow:0 8px 24px rgba(0,0,0,.10); overflow:visible; }}
+        [data-testid="stElementToolbar"] {{ z-index:5; background:#102638 !important; border:1px solid var(--border); border-radius:8px; }}
+        [data-testid="stElementToolbarButton"] svg, [data-testid="stElementToolbar"] button svg {{ fill:var(--muted) !important; color:var(--muted) !important; }}
+        [data-testid="stElementToolbar"] button:hover svg {{ fill:var(--cyan) !important; color:var(--cyan) !important; }}
+        .modebar-container .modebar {{ background:transparent !important; }}
+        .modebar-btn svg {{ opacity:.75; }}
+        .modebar-btn:hover svg {{ opacity:1; }}
         div[data-testid="stDataFrame"] {{ border:1px solid var(--border); border-radius:10px; overflow:hidden; }}
         div[data-testid="stExpander"] {{ background:rgba(13,34,51,.55); border:1px solid var(--border) !important; border-radius:10px !important; }}
         div[data-testid="stExpander"] summary {{ font-weight:700; color:var(--text); }}
@@ -265,7 +291,7 @@ def inject_theme():
         hr {{ border-color:var(--border) !important; }}
         div[data-testid="stAlert"] {{ background:#102638 !important; border:1px solid #28465A !important; border-left:3px solid var(--cyan) !important; border-radius:9px !important; }}
         div[data-testid="stAlert"] * {{ color:var(--text) !important; }}
-        .mck-footer {{ margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; justify-content:space-betSEGn; gap:1rem; flex-wrap:wrap; color:var(--muted); font-size:.68rem; }}
+        .mck-footer {{ margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; color:var(--muted); font-size:.68rem; }}
 
         /* Responsive */
         @media (max-width: 900px) {{
@@ -885,8 +911,8 @@ if current_fy_opts:
     fy_pick = st.selectbox("Financial Year", current_fy_opts, index=len(current_fy_opts) - 1)
     fy_df = tdf[tdf["financial_year"] == fy_pick]
 
-    granularity = st.radio("Granularity", ["Monthly", "SEGkly"], horizontal=True)
-    period_col = "onboard_month" if granularity == "Monthly" else "onboard_SEGk"
+    granularity = st.radio("Granularity", ["Monthly", "Weekly"], horizontal=True)
+    period_col = "onboard_month" if granularity == "Monthly" else "onboard_week"
 
     period_agg = fy_df.groupby(period_col).agg(
         entrepreneurs=("ID", "nunique") if "ID" in fy_df.columns else (period_col, "size"),
@@ -946,7 +972,7 @@ if "onboard_month" in tdf.columns:
 # 7. Section 6 — Sustainability & Support
 # ---------------------------------------------------------------------------
 
-section("06", "Sustainability &amp; Support", "Green-energy adoption, resource practices, and the gap betSEGn support needed and support delivered.")
+section("06", "Sustainability &amp; Support", "Green-energy adoption, resource practices, and the gap between support needed and support delivered.")
 
 # --- Green energy adoption --------------------------------------------------
 st.subheader("Green Energy Adoption")
