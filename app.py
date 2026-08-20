@@ -394,11 +394,10 @@ st.markdown(f"""
 section("01", "Executive Summary", "Till-date programme totals for the current filter selection.")
 k = compute_kpis(fdf)
 
-r1 = st.columns(4)
+r1 = st.columns(3)
 r1[0].metric("Total Entrepreneurs", f"{k['total_entrepreneurs']:,}")
 r1[1].metric("Jobs Created", f"{k['total_jobs_created']:,.0f}")
-r1[2].metric("Women’s Jobs Created", f"{k['number_of_female_employees']:,.0f}")
-r1[3].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%", f"{k['data_correct_rate_pct']:.1f}% flagged correct")
+r1[2].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%", f"{k['data_correct_rate_pct']:.1f}% flagged correct")
 
 r2 = st.columns(4)
 r2[0].metric("Youth (≤29)", f"{k['youth_entrepreneurs']:,}", f"{k['youth_entrepreneurs'] / max(k['total_entrepreneurs'],1) * 100:.1f}% of entrepreneurs")
