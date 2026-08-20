@@ -397,7 +397,7 @@ k = compute_kpis(fdf)
 r1 = st.columns(4)
 r1[0].metric("Total Entrepreneurs", f"{k['total_entrepreneurs']:,}")
 r1[1].metric("Jobs Created", f"{k['total_jobs_created']:,.0f}")
-r1[2].metric("jobs_created For Women", f"{k['number_of_female_employees']:,.0f}")
+r1[2].metric("Jobs created For Women", f"{k['number_of_female_employees']:,.0f}")
 r1[3].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%", f"{k['data_correct_rate_pct']:.1f}% flagged correct")
 
 r2 = st.columns(4)
