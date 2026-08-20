@@ -408,7 +408,6 @@ r2[3].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} 
 r3 = st.columns(3)
 r3[0].metric("Total Savings Invested", format_indian_number(k['total_savings_invested']))
 r3[1].metric("Total Loan Mobilized", format_indian_number(k['total_loan_mobilized']))
-r3[2].metric("Total Finance Unlocked", format_indian_number(k['total_investment']))
 
 # ---------------------------------------------------------------------------
 # 3. Section 2 — Financial & Loan Breakdown
