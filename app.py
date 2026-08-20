@@ -1,7 +1,7 @@
 """
 app.py
 ------
-WEE / M&E Monitoring Dashboard — Streamlit + Plotly
+SEG / M&E Monitoring Dashboard — Streamlit + Plotly
 
 Run with:
     streamlit run app.py
@@ -31,7 +31,7 @@ from data_utils import load_data, apply_filters, split_multiselect_counts, DATE_
 from kpi_utils import compute_kpis, format_indian_number
 from targets_utils import target_vs_achieved, METRIC_LABELS
 
-st.set_page_config(page_title="WEE / M&E Dashboard", layout="wide", page_icon="📊")
+st.set_page_config(page_title="SEG / M&E Dashboard", layout="wide", page_icon="📊")
 
 # ---------------------------------------------------------------------------
 # Brand tokens — single source of truth for every color/font in the app.
@@ -218,7 +218,7 @@ def inject_theme():
         section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] * {{ color: #BDEBFA !important; }}
         section[data-testid="stSidebar"] button {{ border-radius: 8px !important; border: 1px solid #31566C !important; background: transparent !important; font-weight: 700; }}
         section[data-testid="stSidebar"] button:hover {{ background: rgba(24,182,242,.12) !important; border-color: var(--cyan) !important; }}
-        .flt-head {{ display:flex; align-items:center; justify-content:space-between; font-size:.68rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:#fff; padding:.75rem 0 .55rem; border-bottom:1px solid var(--border); }}
+        .flt-head {{ display:flex; align-items:center; justify-content:space-betSEGn; font-size:.68rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:#fff; padding:.75rem 0 .55rem; border-bottom:1px solid var(--border); }}
         .flt-group {{ font-size:.61rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:{SKY}; margin:1.05rem 0 .25rem; }}
         .flt-status {{ display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin:1rem 0 .65rem; }}
         .flt-status div {{ background:#102638; border:1px solid #28465A; border-radius:9px; padding:.6rem .65rem; }}
@@ -226,7 +226,7 @@ def inject_theme():
         .flt-status b {{ display:block; color:#fff; font-size:1rem; margin-top:.15rem; }}
 
         /* Masthead */
-        .mck-masthead {{ display:flex; justify-content:space-between; align-items:flex-end; gap:2rem; flex-wrap:wrap; padding:0 0 1.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }}
+        .mck-masthead {{ display:flex; justify-content:space-betSEGn; align-items:flex-end; gap:2rem; flex-wrap:wrap; padding:0 0 1.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }}
         .mck-eyebrow {{ color:var(--cyan); font-size:.62rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; margin-bottom:.45rem; }}
         .mck-masthead h1 {{ font-size:2rem !important; font-weight:800 !important; margin:0 !important; line-height:1.08; }}
         .mck-masthead p {{ color:var(--muted) !important; font-size:.82rem; max-width:68ch; margin:.45rem 0 0; line-height:1.55; }}
@@ -265,7 +265,7 @@ def inject_theme():
         hr {{ border-color:var(--border) !important; }}
         div[data-testid="stAlert"] {{ background:#102638 !important; border:1px solid #28465A !important; border-left:3px solid var(--cyan) !important; border-radius:9px !important; }}
         div[data-testid="stAlert"] * {{ color:var(--text) !important; }}
-        .mck-footer {{ margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; color:var(--muted); font-size:.68rem; }}
+        .mck-footer {{ margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; justify-content:space-betSEGn; gap:1rem; flex-wrap:wrap; color:var(--muted); font-size:.68rem; }}
 
         /* Responsive */
         @media (max-width: 900px) {{
@@ -885,8 +885,8 @@ if current_fy_opts:
     fy_pick = st.selectbox("Financial Year", current_fy_opts, index=len(current_fy_opts) - 1)
     fy_df = tdf[tdf["financial_year"] == fy_pick]
 
-    granularity = st.radio("Granularity", ["Monthly", "Weekly"], horizontal=True)
-    period_col = "onboard_month" if granularity == "Monthly" else "onboard_week"
+    granularity = st.radio("Granularity", ["Monthly", "SEGkly"], horizontal=True)
+    period_col = "onboard_month" if granularity == "Monthly" else "onboard_SEGk"
 
     period_agg = fy_df.groupby(period_col).agg(
         entrepreneurs=("ID", "nunique") if "ID" in fy_df.columns else (period_col, "size"),
@@ -946,7 +946,7 @@ if "onboard_month" in tdf.columns:
 # 7. Section 6 — Sustainability & Support
 # ---------------------------------------------------------------------------
 
-section("06", "Sustainability &amp; Support", "Green-energy adoption, resource practices, and the gap between support needed and support delivered.")
+section("06", "Sustainability &amp; Support", "Green-energy adoption, resource practices, and the gap betSEGn support needed and support delivered.")
 
 # --- Green energy adoption --------------------------------------------------
 st.subheader("Green Energy Adoption")
