@@ -205,7 +205,7 @@ def inject_theme():
            Value uses tabular figures so columns of numbers align optically. */
         div[data-testid="stMetric"] {{
             background-color: {CARD};
-            border: 1px solid {LINE};
+            border: none;
             border-top: 3px solid {DEEP};
             border-radius: 0;
             padding: 0.85rem 1rem 0.9rem 1rem;
@@ -259,10 +259,10 @@ def inject_theme():
         div[data-baseweb="select"] > div {{ border-radius: 2px !important; border-color: {LINE} !important; }}
 
         /* ---- Data & containers -------------------------------------------- */
-        div[data-testid="stDataFrame"] {{ border: 1px solid {LINE}; border-radius: 0; }}
+        div[data-testid="stDataFrame"] {{ border: none; border-top: 1px solid {LINE}; border-radius: 0; }}
         div[data-testid="stExpander"] {{
-            border: 1px solid {LINE} !important; border-radius: 0 !important;
-            background: {CARD};
+            border: none !important; border-top: 1px solid {LINE} !important;
+            border-radius: 0 !important; background: {CARD};
         }}
         div[data-testid="stExpander"] summary {{
             font-size: 0.8rem; font-weight: 600; color: {DEEP};
@@ -273,7 +273,7 @@ def inject_theme():
         hr {{ border-color: {LINE} !important; }}
         div[data-testid="stAlert"] {{
             border-radius: 0 !important; background: {CARD} !important;
-            border: 1px solid {LINE} !important; border-left: 3px solid {CYAN} !important;
+            border: none !important; border-left: 3px solid {CYAN} !important;
             box-shadow: none !important; padding: 0.65rem 0.9rem !important;
         }}
         div[data-testid="stAlert"] * {{
@@ -281,7 +281,7 @@ def inject_theme():
         }}
         section[data-testid="stSidebar"] div[data-testid="stAlert"] {{
             background: rgba(255,255,255,0.05) !important;
-            border: 1px solid rgba(255,255,255,0.14) !important;
+            border: none !important;
             border-left: 3px solid {CYAN} !important;
         }}
         section[data-testid="stSidebar"] div[data-testid="stAlert"] * {{
@@ -314,7 +314,7 @@ def inject_theme():
         }}
         .mck-metastrip {{
             display: flex; gap: 2.2rem; flex-wrap: wrap;
-            background: {CARD}; border: 1px solid {LINE}; border-top: none;
+            background: {CARD}; border: none;
             padding: 0.6rem 1.8rem; margin-bottom: 0.6rem;
         }}
         .mck-metastrip div {{ font-size: 0.68rem; color: {MUTED}; letter-spacing: 0.06em;
