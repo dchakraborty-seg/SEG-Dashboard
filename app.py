@@ -43,34 +43,35 @@ st.set_page_config(page_title="WEE / M&E Dashboard", layout="wide", page_icon="�
 # Plotly template, and every chart's color arguments — derives from these.
 # ---------------------------------------------------------------------------
 
-DEEP     = "#051C2C"   # deep navy — chrome, headings, primary series
-NAVY     = "#034B6F"   # mid navy — secondary series
-CYAN     = "#00A9F4"   # bright accent — the focus series
-SKY      = "#6BC2ED"   # light accent — tertiary series
-INK      = "#0B1B2B"   # primary text
-MUTED    = "#5A6874"   # secondary text, captions
-GRAY     = "#C4CDD5"   # baseline / target / inactive series
-LINE     = "#E1E6EA"   # hairlines, card borders, gridlines
-PAGE     = "#0B1B2B"   # dark canvas the whole app sits on
-PANEL    = "#06131F"   # sidebar — one step darker than the canvas
-PAPER    = "#FFFFFF"   # content surfaces (charts, tiles, tables)
-ON_DARK  = "#E4ECF2"   # primary text on the dark canvas
-ON_DARK_M = "#8FA5B8"  # secondary text on the dark canvas
-HAIR_D   = "rgba(255,255,255,0.14)"   # hairlines on the dark canvas
-GRID_D   = "rgba(255,255,255,0.12)"   # chart gridlines on the dark canvas
-LEAD     = "#7FD4E8"   # lead series where DEEP used to carry the weight
-CARD     = "#FFFFFF"   # card background
-AMBER    = "#D98E04"   # attention / pending
-CORAL    = "#C0392B"   # exception / negative — semantic only
-GREEN    = "#00A758"   # confirmed / positive
+DEEP     = "#071A2A"
+NAVY     = "#0D2A3D"
+CYAN     = "#18B6F2"
+SKY      = "#73D2F5"
+INK      = "#EAF2F7"
+MUTED    = "#8FA6B7"
+GRAY     = "#71889A"
+LINE     = "#203A4D"
+PAGE     = "#081522"
+PANEL    = "#0A1C2B"
+PAPER    = "#0D2233"
+ON_DARK  = "#EAF2F7"
+ON_DARK_M = "#9FB3C1"
+HAIR_D   = "rgba(255,255,255,0.10)"
+GRID_D   = "rgba(255,255,255,0.08)"
+LEAD     = "#5CC8F2"
+CARD     = "#0D2233"
+AMBER    = "#F5B942"
+CORAL    = "#FF647C"
+GREEN    = "#35C98A"
+
 
 # Ordered so the first three carry the most weight; categorical charts stay
 # legible in grayscale print because the ramp also varies in lightness.
-BRAND_COLORWAY = [CYAN, SKY, AMBER, GREEN, CORAL, "#B8C9D8", "#7FD4E8", "#FFFFFF"]
+BRAND_COLORWAY = [CYAN, SKY, GREEN, AMBER, CORAL, "#9FB3C1", "#5B9FE8", "#D7E6EF"]
 
-DISPLAY_FONT = "'Archivo', 'Helvetica Neue', Arial, sans-serif"
-BODY_FONT = "'Public Sans', 'Helvetica Neue', Arial, sans-serif"
-MONO_FONT = "'Archivo', 'Helvetica Neue', Arial, sans-serif"   # tabular figures
+DISPLAY_FONT = "'Inter', 'Segoe UI', Arial, sans-serif"
+BODY_FONT = "'Inter', 'Segoe UI', Arial, sans-serif"
+MONO_FONT = "'Inter', 'Segoe UI', Arial, sans-serif"
 
 pio.templates["mck_brand"] = go.layout.Template(
     layout=go.Layout(
@@ -99,7 +100,7 @@ pio.templates["mck_brand"] = go.layout.Template(
     )
 )
 
-PLOTLY_TEMPLATE = "plotly_white+mck_brand"
+PLOTLY_TEMPLATE = "mck_brand"
 COLOR_SEQ = BRAND_COLORWAY
 
 
@@ -129,291 +130,100 @@ def section(number: str, title: str, standfirst: str = ""):
 def inject_theme():
     st.markdown(f"""
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        html, body, [class*="css"] {{ font-family: {BODY_FONT}; color: {INK}; }}
-        .stApp,
-        [data-testid="stAppViewContainer"],
-        [data-testid="stMain"],
-        [data-testid="stMainBlockContainer"],
-        [data-testid="stBottomBlockContainer"] {{
-            background-color: {PAGE} !important;
+        :root {{
+            --page: {PAGE}; --panel: {PANEL}; --card: {CARD}; --card2: #102A3D;
+            --cyan: {CYAN}; --text: {ON_DARK}; --muted: {ON_DARK_M};
+            --border: {LINE}; --green: {GREEN}; --amber: {AMBER}; --coral: {CORAL};
         }}
-        html, body, [class*="css"] {{ color: {ON_DARK}; }}
-        /* Streamlit's toolbar floats over the canvas — without this the first
-           element is sheared off at the top of the page. */
-        header[data-testid="stHeader"] {{
-            background: {PAGE} !important; height: 3rem;
-            border-bottom: 1px solid {HAIR_D};
+        html, body, [class*="css"] {{ font-family: {BODY_FONT}; color: {ON_DARK}; }}
+        .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"],
+        [data-testid="stMainBlockContainer"], [data-testid="stBottomBlockContainer"] {{
+            background: var(--page) !important;
         }}
-        header[data-testid="stHeader"] * {{ color: {ON_DARK} !important; fill: {ON_DARK} !important; }}
-        .block-container {{ padding-top: 4.2rem; padding-bottom: 2rem; max-width: 1560px; }}
-        [data-testid="stVerticalBlock"] {{ gap: 0.7rem; }}
-        [data-testid="stHorizontalBlock"] {{ gap: 0.9rem; align-items: stretch; }}
+        header[data-testid="stHeader"] {{ background: var(--page) !important; border-bottom: 1px solid var(--border); }}
+        header[data-testid="stHeader"] * {{ color: var(--muted) !important; fill: var(--muted) !important; }}
+        .block-container {{ max-width: 1480px; padding: 2.2rem 2.2rem 3rem; }}
+        [data-testid="stVerticalBlock"] {{ gap: .8rem; }}
+        [data-testid="stHorizontalBlock"] {{ gap: 1rem; align-items: stretch; }}
+        h1,h2,h3,h4 {{ font-family: {DISPLAY_FONT} !important; color: var(--text) !important; letter-spacing: -.025em; }}
+        h3 {{ font-size: .92rem !important; font-weight: 700 !important; margin: .8rem 0 .2rem !important; }}
+        p, label, span {{ font-family: {BODY_FONT}; }}
+        .stCaption, [data-testid="stCaptionContainer"] {{ color: var(--muted) !important; font-size: .76rem !important; }}
 
-        /* ---- Typography ------------------------------------------------ */
-        h1, h2, h3 {{ font-family: {DISPLAY_FONT} !important; color: {ON_DARK} !important;
-                      letter-spacing: -0.015em; }}
-        /* Chart titles: small, quiet, with a hairline underneath — the label
-           sits above the chart rather than competing with it. */
-        h3 {{
-            font-size: 0.86rem !important; font-weight: 600 !important;
-            text-transform: none; color: {ON_DARK} !important;
-            margin: 1.4rem 0 0.3rem 0 !important; padding-bottom: 0.4rem;
-            border-bottom: 1px solid {HAIR_D};
-        }}
-
-        /* ---- Section rule ---------------------------------------------- */
-        .mck-section {{
-            display: flex; align-items: flex-start; gap: 0.75rem;
-            margin: 2.4rem 0 1rem 0; padding: 0;
-            border-top: none;
-        }}
-        .mck-section-num {{
-            font-family: {BODY_FONT}; font-size: 0.66rem; font-weight: 700;
-            color: {PAGE}; background: {CYAN}; letter-spacing: 0.08em;
-            padding: 0.28rem 0.45rem; line-height: 1;
-            font-variant-numeric: tabular-nums; flex: 0 0 auto;
-            margin-top: 0.12rem;
-        }}
-        .mck-section-title {{
-            font-family: {DISPLAY_FONT}; font-size: 0.86rem; font-weight: 700;
-            color: #FFFFFF; line-height: 1.25; letter-spacing: 0.14em;
-            text-transform: uppercase;
-        }}
-        .mck-section-sub {{
-            font-size: 0.79rem; color: {ON_DARK_M}; margin-top: 0.25rem; max-width: 78ch;
-        }}
-
-        /* ---- Sidebar ---------------------------------------------------- */
-        section[data-testid="stSidebar"] {{
-            background-color: {PANEL};
-            border-right: 1px solid {HAIR_D};
-        }}
-        /* ---- Filter panel ------------------------------------------------
-           Grouped under tracked rules, with a live status block and a reset,
-           so the panel reads as a control surface rather than a stack of
-           identical dropdowns. */
-        .flt-head {{
-            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em;
-            text-transform: uppercase; color: #FFFFFF;
-            padding: 0.9rem 0 0.5rem 0; margin-top: 0.6rem;
-            border-bottom: 2px solid {CYAN};
-        }}
-        .flt-group {{
-            font-size: 0.6rem; font-weight: 700; letter-spacing: 0.18em;
-            text-transform: uppercase; color: {SKY};
-            margin: 1.25rem 0 0.1rem 0; padding-bottom: 0.3rem;
-            border-bottom: 1px solid rgba(255,255,255,0.12);
-        }}
-        .flt-status {{
-            display: flex; gap: 0.5rem; margin: 1.3rem 0 0.6rem 0;
-        }}
-        .flt-status div {{
-            flex: 1; background: rgba(255,255,255,0.06);
-            border-left: 2px solid {CYAN}; padding: 0.45rem 0.6rem;
-        }}
-        .flt-status span {{
-            display: block; font-size: 0.55rem; font-weight: 700;
-            letter-spacing: 0.14em; text-transform: uppercase; color: {SKY};
-        }}
-        .flt-status b {{
-            display: block; font-family: {DISPLAY_FONT}; font-size: 1.05rem;
-            font-weight: 700; color: #FFFFFF; font-variant-numeric: tabular-nums;
-            letter-spacing: -0.02em; margin-top: 0.1rem;
-        }}
-        section[data-testid="stSidebar"] * {{ color: #E8EDF2 !important; }}
-        section[data-testid="stSidebar"] h1 {{
-            font-family: {DISPLAY_FONT} !important; color: #FFFFFF !important;
-            font-size: 1.15rem !important; font-weight: 600 !important;
-            letter-spacing: 0.01em; border-bottom: none;
-        }}
-        section[data-testid="stSidebar"] h2 {{
-            font-size: 0.72rem !important; text-transform: uppercase;
-            letter-spacing: 0.14em; color: {SKY} !important; font-weight: 600 !important;
-            border-bottom: none !important; margin-top: 1.6rem !important;
-        }}
-        section[data-testid="stSidebar"] label {{
-            font-size: 0.76rem !important; font-weight: 500 !important;
-            letter-spacing: 0.02em; color: #AFC2D1 !important;
-        }}
+        /* Sidebar */
+        section[data-testid="stSidebar"] {{ background: var(--panel) !important; border-right: 1px solid var(--border); }}
+        section[data-testid="stSidebar"] > div {{ padding: 1.25rem 1rem 1.5rem; }}
+        section[data-testid="stSidebar"] h1 {{ font-size: 1.05rem !important; font-weight: 800 !important; margin-bottom: .15rem !important; }}
+        section[data-testid="stSidebar"] label {{ color: #AFC2D1 !important; font-size: .73rem !important; font-weight: 600 !important; }}
         section[data-testid="stSidebar"] [data-baseweb="select"] > div,
         section[data-testid="stSidebar"] [data-baseweb="input"] > div {{
-            background-color: rgba(255,255,255,0.06) !important;
-            border: 1px solid rgba(255,255,255,0.18) !important;
-            border-radius: 2px !important;
+            background: #102638 !important; border: 1px solid #28465A !important; border-radius: 8px !important;
         }}
-        section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] {{
-            background-color: {CYAN} !important; color: {DEEP} !important;
-            border-radius: 2px !important; font-weight: 600;
-        }}
-        section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] * {{
-            color: {DEEP} !important;
-        }}
-        section[data-testid="stSidebar"] hr {{ border-color: rgba(255,255,255,0.14); }}
-        section[data-testid="stSidebar"] button {{
-            border-radius: 0 !important; border: 1px solid {CYAN} !important;
-            background: transparent !important; font-weight: 600;
-            font-size: 0.7rem !important; letter-spacing: 0.1em;
-            text-transform: uppercase; padding: 0.35rem 0.6rem !important;
-        }}
-        section[data-testid="stSidebar"] button:hover {{
-            background: {CYAN} !important;
-        }}
-        section[data-testid="stSidebar"] button:hover * {{ color: {PAGE} !important; }}
+        section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] {{ background: rgba(24,182,242,.18) !important; border: 1px solid rgba(24,182,242,.35); border-radius: 6px !important; }}
+        section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] * {{ color: #BDEBFA !important; }}
+        section[data-testid="stSidebar"] button {{ border-radius: 8px !important; border: 1px solid #31566C !important; background: transparent !important; font-weight: 700; }}
+        section[data-testid="stSidebar"] button:hover {{ background: rgba(24,182,242,.12) !important; border-color: var(--cyan) !important; }}
+        .flt-head {{ display:flex; align-items:center; justify-content:space-between; font-size:.68rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:#fff; padding:.75rem 0 .55rem; border-bottom:1px solid var(--border); }}
+        .flt-group {{ font-size:.61rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:{SKY}; margin:1.05rem 0 .25rem; }}
+        .flt-status {{ display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin:1rem 0 .65rem; }}
+        .flt-status div {{ background:#102638; border:1px solid #28465A; border-radius:9px; padding:.6rem .65rem; }}
+        .flt-status span {{ display:block; color:{ON_DARK_M}; font-size:.56rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }}
+        .flt-status b {{ display:block; color:#fff; font-size:1rem; margin-top:.15rem; }}
 
-        /* ---- KPI blocks -------------------------------------------------
-           Flat tiles with a top keyline instead of rounded, shadowed cards.
-           Value uses tabular figures so columns of numbers align optically. */
-        /* Figures read as one continuous strip divided by hairlines, rather
-           than as separate floating cards. */
-        div[data-testid="stMetric"] {{
-            background-color: transparent;
-            border: none;
-            border-left: 1px solid {HAIR_D};
-            border-radius: 0;
-            padding: 0.1rem 1rem 0.5rem 1.1rem;
-            box-shadow: none;
-        }}
-        div[data-testid="stColumn"]:first-child div[data-testid="stMetric"] {{
-            border-left: none; padding-left: 0;
-        }}
-        div[data-testid="stMetricLabel"] {{
-            font-family: {BODY_FONT}; font-size: 0.68rem !important;
-            text-transform: uppercase; letter-spacing: 0.1em; color: {ON_DARK_M} !important;
-            font-weight: 600 !important; white-space: normal !important; line-height: 1.35;
-        }}
-        div[data-testid="stMetricValue"] {{
-            font-family: {MONO_FONT}; color: #FFFFFF !important; font-weight: 600 !important;
-            font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
-            white-space: normal !important; overflow-wrap: break-word;
-            font-size: 1.75rem !important; line-height: 1.05; margin-top: 0.25rem;
-        }}
-        div[data-testid="stMetricDelta"] {{
-            font-size: 0.72rem !important; font-weight: 500 !important;
-            color: {ON_DARK_M} !important; background: transparent !important;
-            padding: 0 !important; margin-top: 0.15rem;
-        }}
-        div[data-testid="stMetricDelta"] * {{
-            background: transparent !important; color: {ON_DARK_M} !important;
-        }}
-        /* equal-height tiles regardless of whether a delta line is present */
+        /* Masthead */
+        .mck-masthead {{ display:flex; justify-content:space-between; align-items:flex-end; gap:2rem; flex-wrap:wrap; padding:0 0 1.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }}
+        .mck-eyebrow {{ color:var(--cyan); font-size:.62rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; margin-bottom:.45rem; }}
+        .mck-masthead h1 {{ font-size:2rem !important; font-weight:800 !important; margin:0 !important; line-height:1.08; }}
+        .mck-masthead p {{ color:var(--muted) !important; font-size:.82rem; max-width:68ch; margin:.45rem 0 0; line-height:1.55; }}
+        .mck-runmeta {{ display:flex; flex-wrap:wrap; gap:.45rem; }}
+        .mck-runmeta div {{ min-width:88px; padding:.55rem .7rem; background:#0D2233; border:1px solid var(--border); border-radius:8px; color:var(--muted); font-size:.55rem; font-weight:700; text-transform:uppercase; letter-spacing:.09em; }}
+        .mck-runmeta b {{ display:block; color:#fff; font-size:.78rem; margin-top:.15rem; letter-spacing:0; text-transform:none; }}
 
-        div[data-testid="stMetricDelta"] svg {{ display: none; }}
+        /* Section headers */
+        .mck-section {{ display:flex; align-items:flex-start; gap:.7rem; margin:2.25rem 0 .85rem; }}
+        .mck-section-num {{ display:grid; place-items:center; min-width:28px; height:28px; border-radius:7px; background:rgba(24,182,242,.14); border:1px solid rgba(24,182,242,.3); color:var(--cyan); font-size:.62rem; font-weight:800; }}
+        .mck-section-title {{ color:#fff; font-size:.92rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; line-height:1.25; }}
+        .mck-section-sub {{ color:var(--muted); font-size:.73rem; margin-top:.2rem; }}
 
-        /* ---- Tabs -------------------------------------------------------- */
-        .stTabs [data-baseweb="tab-list"] {{ gap: 1.4rem; border-bottom: 1px solid {HAIR_D}; }}
-        .stTabs [data-baseweb="tab"] {{
-            font-family: {BODY_FONT}; font-weight: 600; font-size: 0.78rem;
-            text-transform: uppercase; letter-spacing: 0.08em; color: {ON_DARK_M};
-            padding: 0.35rem 0; background: transparent;
-        }}
-        .stTabs [aria-selected="true"] {{ color: #FFFFFF !important; }}
-        .stTabs [data-baseweb="tab-highlight"] {{ background-color: {CYAN} !important; height: 2px; }}
-        .stTabs [data-baseweb="tab-border"] {{ display: none; }}
+        /* KPI cards */
+        div[data-testid="stMetric"] {{ background:linear-gradient(145deg,#0D2233,#0B1D2C) !important; border:1px solid var(--border) !important; border-radius:12px !important; padding:1rem 1rem .85rem !important; min-height:108px; box-shadow:0 8px 24px rgba(0,0,0,.12); }}
+        div[data-testid="stMetric"]:hover {{ border-color:#31566C !important; transform:translateY(-1px); transition:.15s ease; }}
+        div[data-testid="stMetricLabel"] {{ color:var(--muted) !important; font-size:.65rem !important; font-weight:700 !important; text-transform:uppercase; letter-spacing:.08em; }}
+        div[data-testid="stMetricValue"] {{ color:#fff !important; font-size:1.65rem !important; font-weight:800 !important; letter-spacing:-.035em; margin-top:.25rem; }}
+        div[data-testid="stMetricDelta"] {{ font-size:.68rem !important; color:var(--muted) !important; margin-top:.25rem; }}
+        div[data-testid="stMetricDelta"] * {{ color:var(--muted) !important; background:transparent !important; }}
+        div[data-testid="stMetricDelta"] svg {{ display:none; }}
 
-        /* ---- Controls ---------------------------------------------------- */
-        .stRadio label, .stSelectbox label {{
-            font-size: 0.74rem !important; font-weight: 600 !important;
-            text-transform: uppercase; letter-spacing: 0.08em; color: {ON_DARK_M} !important;
-        }}
-        [data-testid="stMain"] div[data-baseweb="select"] > div {{
-            background: rgba(255,255,255,0.06) !important;
-            border-color: {HAIR_D} !important;
-        }}
-        [data-testid="stMain"] div[data-baseweb="select"] * {{ color: {ON_DARK} !important; }}
-        [data-testid="stMain"] .stRadio [role="radiogroup"] label * {{ color: {ON_DARK} !important; }}
-        .stRadio [role="radiogroup"] {{ gap: 1.1rem; }}
-        div[data-baseweb="select"] > div {{ border-radius: 2px !important; border-color: {HAIR_D} !important; }}
+        /* Chart and data surfaces */
+        [data-testid="stPlotlyChart"] {{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:.3rem .3rem .1rem; box-shadow:0 8px 24px rgba(0,0,0,.10); }}
+        div[data-testid="stDataFrame"] {{ border:1px solid var(--border); border-radius:10px; overflow:hidden; }}
+        div[data-testid="stExpander"] {{ background:rgba(13,34,51,.55); border:1px solid var(--border) !important; border-radius:10px !important; }}
+        div[data-testid="stExpander"] summary {{ font-weight:700; color:var(--text); }}
+        .stTabs [data-baseweb="tab-list"] {{ gap:1.2rem; border-bottom:1px solid var(--border); }}
+        .stTabs [data-baseweb="tab"] {{ color:var(--muted); font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; padding:.45rem .05rem; }}
+        .stTabs [aria-selected="true"] {{ color:#fff !important; }}
+        .stTabs [data-baseweb="tab-highlight"] {{ background:var(--cyan) !important; height:2px; }}
+        [data-testid="stMain"] div[data-baseweb="select"] > div {{ background:#102638 !important; border:1px solid #28465A !important; border-radius:8px !important; }}
+        [data-testid="stMain"] div[data-baseweb="select"] * {{ color:var(--text) !important; }}
+        .stRadio [role="radiogroup"] {{ gap:1rem; }}
+        .stRadio label {{ color:var(--muted) !important; font-size:.72rem !important; font-weight:600 !important; }}
+        hr {{ border-color:var(--border) !important; }}
+        div[data-testid="stAlert"] {{ background:#102638 !important; border:1px solid #28465A !important; border-left:3px solid var(--cyan) !important; border-radius:9px !important; }}
+        div[data-testid="stAlert"] * {{ color:var(--text) !important; }}
+        .mck-footer {{ margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; color:var(--muted); font-size:.68rem; }}
 
-        /* ---- Data & containers -------------------------------------------- */
-        div[data-testid="stDataFrame"] {{ border: none; border-top: 1px solid {HAIR_D}; border-radius: 0; }}
-        div[data-testid="stExpander"] {{
-            border: none !important; border-top: 1px solid {HAIR_D} !important;
-            border-radius: 0 !important; background: transparent;
-        }}
-        div[data-testid="stExpander"] summary {{
-            font-size: 0.8rem; font-weight: 600; color: {ON_DARK};
-        }}
-        .stCaption, [data-testid="stCaptionContainer"] {{
-            color: {ON_DARK_M} !important; font-size: 0.76rem !important; line-height: 1.5;
-        }}
-        hr {{ border-color: {HAIR_D} !important; }}
-        div[data-testid="stAlert"] {{
-            border-radius: 0 !important; background: rgba(255,255,255,0.05) !important;
-            border: none !important; border-left: 3px solid {CYAN} !important;
-            box-shadow: none !important; padding: 0.65rem 0.9rem !important;
-        }}
-        div[data-testid="stAlert"] > div,
-        div[data-testid="stAlert"] div,
-        div[data-testid="stAlertContainer"],
-        div[data-testid="stAlertContentInfo"],
-        div[data-testid="stAlertContentSuccess"],
-        div[data-testid="stAlertContentWarning"],
-        div[data-testid="stAlertContentError"] {{
-            background: transparent !important; background-color: transparent !important;
-            border: none !important; border-radius: 0 !important; box-shadow: none !important;
-            padding: 0 !important;
-        }}
-        div[data-testid="stAlert"] * {{
-            color: {ON_DARK} !important; font-size: 0.79rem !important;
-            fill: {MUTED} !important; line-height: 1.45 !important;
-        }}
-        section[data-testid="stSidebar"] div[data-testid="stAlert"] {{
-            background: rgba(255,255,255,0.05) !important;
-            border: none !important;
-            border-left: 3px solid {CYAN} !important;
-        }}
-        section[data-testid="stSidebar"] div[data-testid="stAlert"] *,
-        section[data-testid="stSidebar"] div[data-testid="stAlertContainer"] {{
-            color: #D6E1EA !important; background: transparent !important;
-            background-color: transparent !important; box-shadow: none !important;
-        }}
-
-        /* ---- Masthead ------------------------------------------------------
-           No dark hero band. A hairline-ruled masthead on white: title left,
-           run parameters right, the way a printed report states its scope. */
-        .mck-masthead {{
-            display: flex; justify-content: space-between; align-items: flex-end;
-            gap: 3rem; flex-wrap: wrap;
-            border-bottom: 1px solid {HAIR_D};
-            padding: 0 0 0.9rem 0; margin: 0 0 0.2rem 0;
-        }}
-        .mck-eyebrow {{
-            font-size: 0.64rem; font-weight: 700; letter-spacing: 0.2em;
-            text-transform: uppercase; color: {CYAN}; margin-bottom: 0.5rem;
-        }}
-        .mck-masthead h1 {{
-            font-family: {DISPLAY_FONT} !important; color: {DEEP} !important;
-            font-size: 1.5rem !important; font-weight: 700 !important;
-            margin: 0 !important; line-height: 1.15; color: #FFFFFF !important;
-            letter-spacing: -0.035em; border-bottom: none !important;
-        }}
-        .mck-masthead p {{
-            color: {ON_DARK_M} !important; font-family: {BODY_FONT};
-            font-size: 0.8rem; margin: 0.35rem 0 0 0; max-width: 74ch;
-        }}
-        /* Run parameters: label over value, separated by hairline rules. */
-        .mck-runmeta {{ display: flex; gap: 0; flex-wrap: wrap; }}
-        .mck-runmeta div {{
-            padding: 0 1rem; border-left: 1px solid {HAIR_D};
-            font-size: 0.6rem; color: {ON_DARK_M}; letter-spacing: 0.14em;
-            text-transform: uppercase; font-weight: 700; line-height: 1.6;
-        }}
-        .mck-runmeta div:first-child {{ border-left: none; padding-left: 0; }}
-        .mck-runmeta b {{
-            display: block; color: #FFFFFF; font-size: 0.9rem; font-weight: 600;
-            font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
-            text-transform: none;
-        }}
-
-        .mck-footer {{
-            margin-top: 3.2rem; padding-top: 0.9rem; border-top: 1px solid {HAIR_D};
-            font-family: {BODY_FONT}; font-size: 0.72rem; color: {ON_DARK_M};
-            display: flex; justify-content: space-between; letter-spacing: 0.02em;
+        /* Responsive */
+        @media (max-width: 900px) {{
+            .block-container {{ padding:1.2rem .9rem 2rem; }}
+            .mck-masthead h1 {{ font-size:1.55rem !important; }}
+            .mck-runmeta {{ width:100%; }}
+            .mck-runmeta div {{ flex:1; }}
         }}
     </style>
     """, unsafe_allow_html=True)
+
 
 inject_theme()
 
@@ -421,8 +231,9 @@ inject_theme()
 # 0. Data load
 # ---------------------------------------------------------------------------
 
-st.sidebar.title("SEG Dashboard")
-st.sidebar.caption("Sustainable Entrepreneurship Group · Development Alternatives")
+st.sidebar.markdown('<div style="font-size:.62rem;font-weight:800;letter-spacing:.16em;color:#18B6F2;text-transform:uppercase;margin-bottom:.35rem;">SEG · M&E</div>', unsafe_allow_html=True)
+st.sidebar.title("WEE Dashboard")
+st.sidebar.caption("Women’s Economic Empowerment · Development Alternatives")
 
 DEFAULT_PATH_CANDIDATES = ["all_data.parquet", "all_data.xlsx"]
 REMOTE_CACHE_TTL_SECONDS = 900  # 15 min — balances "feels live" vs. GitHub API rate limits
@@ -583,23 +394,20 @@ st.markdown(f"""
 section("01", "Executive Summary", "Till-date programme totals for the current filter selection.")
 k = compute_kpis(fdf)
 
-r1 = st.columns(3)
+r1 = st.columns(4)
 r1[0].metric("Total Entrepreneurs", f"{k['total_entrepreneurs']:,}")
-r1[1].metric("Youth (≤29)", f"{k['youth_entrepreneurs']:,}",
-             f"{k['youth_entrepreneurs'] / max(k['total_entrepreneurs'],1) * 100:.1f}%")
-r1[2].metric("Jobs Created", f"{k['total_jobs_created']:,.0f}")
+r1[1].metric("Jobs Created", f"{k['total_jobs_created']:,.0f}")
+r1[2].metric("Total Loan Mobilized", format_indian_number(k['total_loan_mobilized']))
+r1[3].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%", f"{k['data_correct_rate_pct']:.1f}% flagged correct")
 
-r2 = st.columns(3)
-r2[0].metric("High-Growth Enterprises", f"{k['high_growth_enterprises']:,}", "> 2 employees",
-              delta_color="off")
-r2[1].metric("Green Enterprises", f"{k['green_enterprises']:,}", f"{k['green_pct']:.1f}% of total")
-r2[2].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} t")
+r2 = st.columns(4)
+r2[0].metric("Youth (≤29)", f"{k['youth_entrepreneurs']:,}", f"{k['youth_entrepreneurs'] / max(k['total_entrepreneurs'],1) * 100:.1f}% of entrepreneurs")
+r2[1].metric("High-Growth Enterprises", f"{k['high_growth_enterprises']:,}", "> 2 employees", delta_color="off")
+r2[2].metric("Green Enterprises", f"{k['green_enterprises']:,}", f"{k['green_pct']:.1f}% of total")
+r2[3].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} t")
 
-r3 = st.columns(3)
+r3 = st.columns(1)
 r3[0].metric("Total Savings Invested", format_indian_number(k['total_savings_invested']))
-r3[1].metric("Total Loan Mobilized", format_indian_number(k['total_loan_mobilized']))
-r3[2].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%",
-             f"{k['data_correct_rate_pct']:.1f}% flagged correct")
 
 
 # ---------------------------------------------------------------------------
