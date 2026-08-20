@@ -57,6 +57,8 @@ PAPER    = "#FFFFFF"   # content surfaces (charts, tiles, tables)
 ON_DARK  = "#E4ECF2"   # primary text on the dark canvas
 ON_DARK_M = "#8FA5B8"  # secondary text on the dark canvas
 HAIR_D   = "rgba(255,255,255,0.14)"   # hairlines on the dark canvas
+GRID_D   = "rgba(255,255,255,0.12)"   # chart gridlines on the dark canvas
+LEAD     = "#7FD4E8"   # lead series where DEEP used to carry the weight
 CARD     = "#FFFFFF"   # card background
 AMBER    = "#D98E04"   # attention / pending
 CORAL    = "#C0392B"   # exception / negative — semantic only
@@ -64,7 +66,7 @@ GREEN    = "#00A758"   # confirmed / positive
 
 # Ordered so the first three carry the most weight; categorical charts stay
 # legible in grayscale print because the ramp also varies in lightness.
-BRAND_COLORWAY = [DEEP, CYAN, NAVY, SKY, AMBER, GREEN, CORAL, "#8C9BA8"]
+BRAND_COLORWAY = [CYAN, SKY, AMBER, GREEN, CORAL, "#B8C9D8", "#7FD4E8", "#FFFFFF"]
 
 DISPLAY_FONT = "'Archivo', 'Helvetica Neue', Arial, sans-serif"
 BODY_FONT = "'Public Sans', 'Helvetica Neue', Arial, sans-serif"
@@ -73,27 +75,27 @@ MONO_FONT = "'Archivo', 'Helvetica Neue', Arial, sans-serif"   # tabular figures
 pio.templates["mck_brand"] = go.layout.Template(
     layout=go.Layout(
         colorway=BRAND_COLORWAY,
-        font=dict(family=BODY_FONT, color=INK, size=12),
-        title=dict(font=dict(family=BODY_FONT, size=14, color=DEEP), x=0, xanchor="left"),
-        legend=dict(font=dict(size=11, color=MUTED), bgcolor="rgba(0,0,0,0)",
+        font=dict(family=BODY_FONT, color=ON_DARK, size=12),
+        title=dict(font=dict(family=BODY_FONT, size=14, color=ON_DARK), x=0, xanchor="left"),
+        legend=dict(font=dict(size=11, color=ON_DARK_M), bgcolor="rgba(0,0,0,0)",
                     orientation="h", yanchor="bottom", y=1.02, x=0,
                     title=dict(text="")),
-        paper_bgcolor=PAPER,
-        plot_bgcolor=PAPER,
-        margin=dict(t=44, l=52, r=26, b=42),
-        hoverlabel=dict(bgcolor=DEEP, bordercolor=DEEP,
-                        font=dict(family=BODY_FONT, color="#FFFFFF", size=12)),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=34, l=4, r=8, b=4),
+        hoverlabel=dict(bgcolor=PAPER, bordercolor=PAPER,
+                        font=dict(family=BODY_FONT, color=INK, size=12)),
         # Consulting-chart convention: no vertical gridlines, hairline
         # horizontals only, axis lines dropped so the data carries the chart.
-        xaxis=dict(showgrid=False, zeroline=False, linecolor=LINE, ticks="outside",
-                   ticklen=4, tickcolor=LINE, tickfont=dict(size=11, color=MUTED),
-                   title=dict(font=dict(size=11, color=MUTED))),
-        yaxis=dict(gridcolor=LINE, gridwidth=1, zeroline=False, showline=False,
-                   tickfont=dict(size=11, color=MUTED),
-                   title=dict(font=dict(size=11, color=MUTED))),
-        coloraxis=dict(colorscale=[[0, "#EAF6FD"], [1, DEEP]],
+        xaxis=dict(showgrid=False, zeroline=False, linecolor=GRID_D, ticks="outside",
+                   ticklen=4, tickcolor=GRID_D, tickfont=dict(size=11, color=ON_DARK_M),
+                   title=dict(font=dict(size=11, color=ON_DARK_M))),
+        yaxis=dict(gridcolor=GRID_D, gridwidth=1, zeroline=False, showline=False,
+                   tickfont=dict(size=11, color=ON_DARK_M),
+                   title=dict(font=dict(size=11, color=ON_DARK_M))),
+        coloraxis=dict(colorscale=[[0, "#14304A"], [1, CYAN]],
                        colorbar=dict(outlinewidth=0, thickness=10, len=0.8,
-                                     tickfont=dict(size=10, color=MUTED))),
+                                     tickfont=dict(size=10, color=ON_DARK_M))),
     )
 )
 
@@ -266,37 +268,37 @@ def inject_theme():
         /* Figures read as one continuous strip divided by hairlines, rather
            than as separate floating cards. */
         div[data-testid="stMetric"] {{
-            background-color: {PAPER};
-            border: none; border-top: 3px solid {CYAN};
+            background-color: transparent;
+            border: none;
+            border-left: 1px solid {HAIR_D};
             border-radius: 0;
-            padding: 0.8rem 1rem 0.85rem 1rem;
-            box-shadow: none; height: 100%;
+            padding: 0.1rem 1rem 0.5rem 1.1rem;
+            box-shadow: none;
+        }}
+        div[data-testid="stColumn"]:first-child div[data-testid="stMetric"] {{
+            border-left: none; padding-left: 0;
         }}
         div[data-testid="stMetricLabel"] {{
             font-family: {BODY_FONT}; font-size: 0.68rem !important;
-            text-transform: uppercase; letter-spacing: 0.1em; color: {MUTED} !important;
-            /* label stays dark: the tile itself is a light surface */
+            text-transform: uppercase; letter-spacing: 0.1em; color: {ON_DARK_M} !important;
             font-weight: 600 !important; white-space: normal !important; line-height: 1.35;
         }}
         div[data-testid="stMetricValue"] {{
-            font-family: {MONO_FONT}; color: {DEEP} !important; font-weight: 600 !important;
+            font-family: {MONO_FONT}; color: #FFFFFF !important; font-weight: 600 !important;
             font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
             white-space: normal !important; overflow-wrap: break-word;
             font-size: 1.75rem !important; line-height: 1.05; margin-top: 0.25rem;
         }}
         div[data-testid="stMetricDelta"] {{
             font-size: 0.72rem !important; font-weight: 500 !important;
-            color: {MUTED} !important; background: transparent !important;
+            color: {ON_DARK_M} !important; background: transparent !important;
             padding: 0 !important; margin-top: 0.15rem;
         }}
         div[data-testid="stMetricDelta"] * {{
-            background: transparent !important; color: {MUTED} !important;
+            background: transparent !important; color: {ON_DARK_M} !important;
         }}
         /* equal-height tiles regardless of whether a delta line is present */
-        div[data-testid="stColumn"] div[data-testid="stMetric"] {{
-            height: 100%; min-height: 0;
-            display: flex; flex-direction: column; justify-content: center;
-        }}
+
         div[data-testid="stMetricDelta"] svg {{ display: none; }}
 
         /* ---- Tabs -------------------------------------------------------- */
@@ -316,23 +318,23 @@ def inject_theme():
             text-transform: uppercase; letter-spacing: 0.08em; color: {ON_DARK_M} !important;
         }}
         [data-testid="stMain"] div[data-baseweb="select"] > div {{
-            background: {PAPER} !important; color: {INK} !important;
+            background: rgba(255,255,255,0.06) !important;
+            border-color: {HAIR_D} !important;
         }}
-        [data-testid="stMain"] div[data-baseweb="select"] * {{ color: {INK} !important; }}
+        [data-testid="stMain"] div[data-baseweb="select"] * {{ color: {ON_DARK} !important; }}
         [data-testid="stMain"] .stRadio [role="radiogroup"] label * {{ color: {ON_DARK} !important; }}
         .stRadio [role="radiogroup"] {{ gap: 1.1rem; }}
-        div[data-baseweb="select"] > div {{ border-radius: 2px !important; border-color: {LINE} !important; }}
+        div[data-baseweb="select"] > div {{ border-radius: 2px !important; border-color: {HAIR_D} !important; }}
 
         /* ---- Data & containers -------------------------------------------- */
-        div[data-testid="stDataFrame"] {{ border: none; border-radius: 0; background: {PAPER}; }}
+        div[data-testid="stDataFrame"] {{ border: none; border-top: 1px solid {HAIR_D}; border-radius: 0; }}
         div[data-testid="stExpander"] {{
-            border: none !important; border-top: 2px solid {CYAN} !important;
-            border-radius: 0 !important; background: {PAPER};
+            border: none !important; border-top: 1px solid {HAIR_D} !important;
+            border-radius: 0 !important; background: transparent;
         }}
         div[data-testid="stExpander"] summary {{
-            font-size: 0.8rem; font-weight: 600; color: {DEEP};
+            font-size: 0.8rem; font-weight: 600; color: {ON_DARK};
         }}
-        div[data-testid="stExpander"] * {{ color: {INK}; }}
         .stCaption, [data-testid="stCaptionContainer"] {{
             color: {ON_DARK_M} !important; font-size: 0.76rem !important; line-height: 1.5;
         }}
@@ -617,7 +619,7 @@ with c1:
             parents=[""] * len(loan_by_source),
             values=loan_by_source.values,
             color=loan_by_source.values,
-            color_continuous_scale=[[0, "#EAF6FD"], [1, GREEN]],
+            color_continuous_scale=[[0, "#14304A"], [1, GREEN]],
             template=PLOTLY_TEMPLATE,
         )
         fig.update_traces(texttemplate="%{label}<br>₹%{value:,.0f}")
@@ -759,7 +761,7 @@ if {"sector1", "enterprise_type"}.issubset(fdf.columns):
     top10_sector = sub["enterprise_type"].value_counts().head(10).reset_index()
     top10_sector.columns = ["enterprise_type", "count"]
     fig = px.bar(top10_sector, x="count", y="enterprise_type", orientation="h", template=PLOTLY_TEMPLATE,
-                 color_discrete_sequence=[DEEP])
+                 color_discrete_sequence=[LEAD])
     fig.update_layout(yaxis={"categoryorder": "total ascending"}, yaxis_title="", xaxis_title="Entrepreneurs")
     show(fig)
 
@@ -787,7 +789,7 @@ if {"district1", "sector1"}.issubset(fdf.columns):
     pivot = pd.crosstab(fdf["district1"], fdf["sector1"])
     if pivot.size:
         fig = px.imshow(
-            pivot, template=PLOTLY_TEMPLATE, color_continuous_scale=[[0, "#EAF6FD"], [1, DEEP]], aspect="auto",
+            pivot, template=PLOTLY_TEMPLATE, color_continuous_scale=[[0, "#14304A"], [1, CYAN]], aspect="auto",
             labels=dict(x="Sector", y="District", color="Entrepreneurs"),
         )
         fig.update_layout(xaxis_tickangle=-35)
@@ -818,7 +820,7 @@ if "agency" in fdf.columns:
     with a1:
         st.caption("Entrepreneurs Onboarded")
         fig = px.bar(agency_agg.sort_values("onboarded"), x="onboarded", y="agency", orientation="h",
-                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[DEEP])
+                     template=PLOTLY_TEMPLATE, color_discrete_sequence=[LEAD])
         fig.update_layout(yaxis_title="", xaxis_title="")
         show(fig)
     with a2:
@@ -899,7 +901,7 @@ if len(targets_merged):
     tv = targets_merged[targets_merged["metric"] == metric_key].sort_values("target", ascending=False)
 
     fig = go.Figure()
-    fig.add_bar(x=tv["district1"], y=tv["target"], name="Target", marker_color=GRAY)
+    fig.add_bar(x=tv["district1"], y=tv["target"], name="Target", marker_color="#5C7386")
     fig.add_bar(x=tv["district1"], y=tv["achieved_official"], name="Achieved (official)",
                 marker_color=CYAN)
     fig.update_layout(barmode="group", template=PLOTLY_TEMPLATE, yaxis_title=metric_pick,
@@ -1052,7 +1054,7 @@ with c1:
         solar_counts = fdf["are_you_using_solar_electricity"].value_counts().reset_index()
         solar_counts.columns = ["status", "count"]
         fig = px.pie(solar_counts, names="status", values="count", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[GREEN, GRAY], hole=0.4)
+                     color_discrete_sequence=[GREEN, "#5C7386"], hole=0.4)
         fig.update_traces(textinfo="percent+label")
         show(fig)
 
@@ -1099,7 +1101,7 @@ with c2:
         reuse_counts = fdf["do_you_reuse_your_water"].value_counts().reset_index()
         reuse_counts.columns = ["status", "count"]
         fig = px.pie(reuse_counts, names="status", values="count", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[CYAN, GRAY], hole=0.4)
+                     color_discrete_sequence=[CYAN, "#5C7386"], hole=0.4)
         fig.update_traces(textinfo="percent+label")
         show(fig)
 
