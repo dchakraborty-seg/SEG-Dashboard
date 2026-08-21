@@ -1,7 +1,7 @@
 """
 app.py
 ------
-SEG / M&E Monitoring Dashboard — Streamlit + Plotly
+WEE / M&E Monitoring Dashboard — Streamlit + Plotly
 
 Run with:
     streamlit run app.py
@@ -31,7 +31,7 @@ from data_utils import load_data, apply_filters, split_multiselect_counts, DATE_
 from kpi_utils import compute_kpis, format_indian_number
 from targets_utils import target_vs_achieved, METRIC_LABELS
 
-st.set_page_config(page_title="SEG / M&E Dashboard", layout="wide", page_icon="📊")
+st.set_page_config(page_title="WEE / M&E Dashboard", layout="wide", page_icon="📊")
 
 # ---------------------------------------------------------------------------
 # Brand tokens — single source of truth for every color/font in the app.
@@ -373,7 +373,15 @@ if not df["date_valid"].all():
 # ---------------------------------------------------------------------------
 
 FILTER_KEYS = ["fk_district", "fk_block", "fk_village", "fk_agency",
-               "fk_coord", "fk_phase", "fk_fy", "fk_dates"]
+               "fk_coord", "fk_phase", "fk_gender", "fk_fy", "fk_dates"]
+
+# Values that count as a woman entrepreneur — the extract has used several
+# spellings across revisions, so match on a normalised set rather than one.
+FEMALE_VALUES = {"female", "f", "woman", "women", "girl"}
+
+
+def is_female(series: pd.Series) -> pd.Series:
+    return series.astype(str).str.strip().str.lower().isin(FEMALE_VALUES)
 
 
 def filter_group(label: str):
@@ -412,6 +420,9 @@ f_agencies = multiselect_sorted("Agency", "agency", "fk_agency")
 f_coordinators = multiselect_sorted("Field Coordinator", "name_of_field_coordinator", "fk_coord")
 f_phases = multiselect_sorted("Phase", "phase", "fk_phase")
 
+filter_group("Profile")
+f_genders = multiselect_sorted("Gender", "gender", "fk_gender")
+
 filter_group("Period")
 fy_opts = sorted([x for x in df["financial_year"].dropna().unique()])
 f_fys = st.sidebar.multiselect("Financial Year", fy_opts, key="fk_fy")
@@ -429,8 +440,12 @@ fdf = apply_filters(
     financial_years=f_fys, phases=f_phases, date_range=f_date_range,
 )
 
+# Gender isn't a parameter of apply_filters, so it is applied on the result.
+if f_genders and "gender" in fdf.columns:
+    fdf = fdf[fdf["gender"].isin(f_genders)]
+
 _n_active = sum(bool(x) for x in [f_districts, f_blocks, f_villages, f_agencies,
-                                  f_coordinators, f_phases, f_fys, f_date_range])
+                                  f_coordinators, f_phases, f_genders, f_fys, f_date_range])
 st.sidebar.markdown(
     f'''<div class="flt-status">
          <div><span>Active filters</span><b>{_n_active}</b></div>
@@ -443,7 +458,7 @@ st.sidebar.button("Clear all filters", on_click=reset_filters, width='stretch')
 
 _generated_at = pd.Timestamp.now().strftime("%d %b %Y, %H:%M")
 _active_filters = sum(bool(x) for x in [f_districts, f_blocks, f_villages, f_agencies,
-                                        f_coordinators, f_phases, f_fys, f_date_range])
+                                        f_coordinators, f_phases, f_genders, f_fys, f_date_range])
 _coverage = f"{len(fdf) / max(len(df), 1) * 100:.0f}%"
 
 st.markdown(f"""
@@ -487,6 +502,10 @@ if women_emp_col is None:
     )
 total_women_employees = float(fdf[women_emp_col].sum()) if women_emp_col else None
 
+# Women entrepreneurs: the enterprise owners themselves, distinct from the
+# women they employ above.
+women_entrepreneurs = int(is_female(fdf["gender"]).sum()) if "gender" in fdf.columns else None
+
 # Finance unlocked = credit mobilised from all sources + the entrepreneur's
 # own money put into the enterprise.
 total_finance_unlocked = float(k["total_loan_mobilized"]) + float(k["total_savings_invested"])
@@ -503,11 +522,18 @@ r1[3].metric(
     delta_color="off",
 )
 
-r2 = st.columns(3)
-r2[0].metric("High-Growth Enterprises", f"{k['high_growth_enterprises']:,}", "> 2 employees",
+r2 = st.columns(4)
+r2[0].metric(
+    "Women Entrepreneurs",
+    f"{women_entrepreneurs:,}" if women_entrepreneurs is not None else "—",
+    (f"{women_entrepreneurs / max(k['total_entrepreneurs'], 1) * 100:.1f}% of entrepreneurs"
+     if women_entrepreneurs is not None else "no gender column in extract"),
+    delta_color="off",
+)
+r2[1].metric("High-Growth Enterprises", f"{k['high_growth_enterprises']:,}", "> 2 employees",
               delta_color="off")
-r2[1].metric("Green Enterprises", f"{k['green_enterprises']:,}", f"{k['green_pct']:.1f}% of total")
-r2[2].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} t")
+r2[2].metric("Green Enterprises", f"{k['green_enterprises']:,}", f"{k['green_pct']:.1f}% of total")
+r2[3].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} t")
 
 r3 = st.columns(4)
 r3[0].metric("Total Savings Invested", format_indian_number(k['total_savings_invested']))
