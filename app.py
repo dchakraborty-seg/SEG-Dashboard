@@ -238,6 +238,11 @@ def inject_theme():
         section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] * {{ color: #BDEBFA !important; }}
         section[data-testid="stSidebar"] button {{ border-radius: 8px !important; border: 1px solid #31566C !important; background: transparent !important; font-weight: 700; }}
         section[data-testid="stSidebar"] button:hover {{ background: rgba(24,182,242,.12) !important; border-color: var(--cyan) !important; }}
+        .side-note {{ display:flex; gap:.45rem; align-items:flex-start; font-size:.72rem; line-height:1.5; margin:.35rem 0 .15rem; color:var(--muted); }}
+        .side-note .dot {{ flex:0 0 auto; width:6px; height:6px; border-radius:50%; margin-top:.42rem; }}
+        .side-note.ok .dot {{ background:var(--green); }}
+        .side-note.warn .dot {{ background:var(--amber); }}
+        .side-note.warn {{ color:#D8C48A; }}
         .flt-head {{ display:flex; align-items:center; justify-content:space-between; font-size:.68rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:#fff; padding:.75rem 0 .55rem; border-bottom:1px solid var(--border); }}
         .flt-group {{ font-size:.61rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:{SKY}; margin:1.05rem 0 .25rem; }}
         .flt-status {{ display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin:1rem 0 .65rem; }}
@@ -345,12 +350,20 @@ df = load_remote_df()
 using_remote = df is not None
 
 if using_remote:
-    st.sidebar.success("Auto-synced from private data repo")
+    st.sidebar.markdown(
+        '<div class="side-note ok"><span class="dot"></span>'
+        '<span>Auto-synced from private data repo</span></div>',
+        unsafe_allow_html=True,
+    )
     if st.sidebar.button("Refresh now"):
         fetch_remote_bytes.clear()
         st.rerun()
 else:
-    st.sidebar.info("No remote data source configured — using manual upload.")
+    st.sidebar.markdown(
+        '<div class="side-note"><span class="dot" style="background:#5CC8F2"></span>'
+        '<span>No remote data source configured — using manual upload.</span></div>',
+        unsafe_allow_html=True,
+    )
     uploaded = st.sidebar.file_uploader("Upload data extract (.xlsx or .parquet)", type=["xlsx", "parquet"])
     local_default = next((p for p in DEFAULT_PATH_CANDIDATES if os.path.exists(p)), None)
     if uploaded is not None:
@@ -365,8 +378,12 @@ st.sidebar.caption(f"{len(df):,} raw records loaded")
 
 if not df["date_valid"].all():
     n_bad = int((~df["date_valid"]).sum())
-    st.sidebar.warning(f"⚠️ {n_bad:,} records have an out-of-range onboarding date and are "
-                        f"excluded from FY / time-trend views (but included in KPI totals).")
+    st.sidebar.markdown(
+        f'<div class="side-note warn"><span class="dot"></span><span>{n_bad:,} records have an '
+        f'out-of-range onboarding date and are excluded from FY / time-trend views '
+        f'(but included in KPI totals).</span></div>',
+        unsafe_allow_html=True,
+    )
 
 # ---------------------------------------------------------------------------
 # 1. Global filters
