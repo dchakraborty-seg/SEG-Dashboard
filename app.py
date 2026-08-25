@@ -500,7 +500,7 @@ st.markdown(f"""
 # 2. Section 1 — Executive KPI cards
 # ---------------------------------------------------------------------------
 
-section("01", "Executive Summary", "Till-date programme totals for the current filter selection.")
+section("01", "Executive Summary(2017 to 19th August 2026)", " Programme totals for the current filter selection.")
 k = compute_kpis(fdf)
 
 # The extract has been through several column-naming revisions, so resolve
