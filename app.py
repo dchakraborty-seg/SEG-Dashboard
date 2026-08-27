@@ -483,7 +483,7 @@ st.markdown(f"""
     <div>
         <div class="mck-eyebrow">Monitoring &amp; Evaluation &middot; Sustainable Entrepreneurship Group</div>
         <h1>SEG Data Dashboard</h1>
-        <p>Timeframe: 2017 to 26th August</p>
+        <p>Timeframe: 2017 to 26th August, 2026</p>
     </div>
     <div class="mck-runmeta">
         <div>Records<b>{len(fdf):,}</b></div>
