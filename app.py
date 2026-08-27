@@ -483,8 +483,7 @@ st.markdown(f"""
     <div>
         <div class="mck-eyebrow">Monitoring &amp; Evaluation &middot; Sustainable Entrepreneurship Group</div>
         <h1>SEG Data Dashboard</h1>
-        <p>Executive progress, financial, sector, geographic, temporal and sustainability views.
-        Every figure responds to the filters set in the left panel.</p>
+        <p>Timeframe: 2017 to 26th August</p>
     </div>
     <div class="mck-runmeta">
         <div>Records<b>{len(fdf):,}</b></div>
@@ -533,7 +532,7 @@ r1[1].metric("Youth (≤29 Years)", f"{k['youth_entrepreneurs']:,}",
              f"{k['youth_entrepreneurs'] / max(k['total_entrepreneurs'],1) * 100:.1f}%")
 r1[2].metric("Jobs Created", f"{k['total_jobs_created']:,.0f}")
 r1[3].metric(
-    "Total Jobs Created for Women",
+    "Jobs Created for Women",
     f"{total_women_employees:,.0f}" if total_women_employees is not None else "—",
     None if women_emp_col else "no matching column in extract",
     delta_color="off",
