@@ -550,7 +550,7 @@ r2[0].metric(
 r2[1].metric("High-Growth Enterprises", f"{k['high_growth_enterprises']:,}", "> 2 employees",
               delta_color="off")
 r2[2].metric("Green Enterprises", f"{k['green_enterprises']:,}", f"{k['green_pct']:.1f}% of total")
-r2[3].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} t")
+r2[3].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} tCO2e")
 
 r3 = st.columns(4)
 r3[0].metric("Total Savings Invested", format_indian_number(k['total_savings_invested']))
