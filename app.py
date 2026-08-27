@@ -529,11 +529,11 @@ total_finance_unlocked = float(k["total_loan_mobilized"]) + float(k["total_savin
 
 r1 = st.columns(4)
 r1[0].metric("Total Entrepreneurs", f"{k['total_entrepreneurs']:,}")
-r1[1].metric("Youth (≤29)", f"{k['youth_entrepreneurs']:,}",
+r1[1].metric("Youth (≤29 Years)", f"{k['youth_entrepreneurs']:,}",
              f"{k['youth_entrepreneurs'] / max(k['total_entrepreneurs'],1) * 100:.1f}%")
 r1[2].metric("Jobs Created", f"{k['total_jobs_created']:,.0f}")
 r1[3].metric(
-    "Total Women Employees",
+    "Total Jobs Created for Women",
     f"{total_women_employees:,.0f}" if total_women_employees is not None else "—",
     None if women_emp_col else "no matching column in extract",
     delta_color="off",
