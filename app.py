@@ -256,7 +256,7 @@ def inject_theme():
         section[data-testid="stSidebar"] label {{ color: #AFC2D1 !important; font-size: .73rem !important; font-weight: 600 !important; }}
         section[data-testid="stSidebar"] [data-baseweb="select"] > div,
         section[data-testid="stSidebar"] [data-baseweb="input"] > div {{
-            background: #102638 !important; border: 1px solid #28465A !important; border-radius: 8px !important;
+            background: #1038 !important; border: 1px solid #28465A !important; border-radius: 8px !important;
         }}
         section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] {{ background: rgba(24,182,242,.18) !important; border: 1px solid rgba(24,182,242,.35); border-radius: 6px !important; }}
         section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] * {{ color: #BDEBFA !important; }}
@@ -270,7 +270,7 @@ def inject_theme():
         .flt-head {{ display:flex; align-items:center; justify-content:space-between; font-size:.68rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:#fff; padding:.75rem 0 .55rem; border-bottom:1px solid var(--border); }}
         .flt-group {{ font-size:.61rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:{SKY}; margin:1.05rem 0 .25rem; }}
         .flt-status {{ display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin:1rem 0 .65rem; }}
-        .flt-status div {{ background:#102638; border:1px solid #28465A; border-radius:9px; padding:.6rem .65rem; }}
+        .flt-status div {{ background:#1038; border:1px solid #28465A; border-radius:9px; padding:.6rem .65rem; }}
         .flt-status span {{ display:block; color:{ON_DARK_M}; font-size:.56rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }}
         .flt-status b {{ display:block; color:#fff; font-size:1rem; margin-top:.15rem; }}
 
@@ -300,7 +300,7 @@ def inject_theme():
 
         /* Chart and data surfaces */
         [data-testid="stPlotlyChart"] {{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:.3rem .3rem .1rem; box-shadow:0 8px 24px rgba(0,0,0,.10); overflow:visible; }}
-        [data-testid="stElementToolbar"] {{ z-index:5; background:#102638 !important; border:1px solid var(--border); border-radius:8px; }}
+        [data-testid="stElementToolbar"] {{ z-index:5; background:#1038 !important; border:1px solid var(--border); border-radius:8px; }}
         [data-testid="stElementToolbarButton"] svg, [data-testid="stElementToolbar"] button svg {{ fill:var(--muted) !important; color:var(--muted) !important; }}
         [data-testid="stElementToolbar"] button:hover svg {{ fill:var(--cyan) !important; color:var(--cyan) !important; }}
         .modebar-container .modebar {{ background:transparent !important; }}
@@ -639,7 +639,7 @@ st.markdown(f"""
     <div>
         <div class="mck-eyebrow">Monitoring &amp; Evaluation &middot; Sustainable Entrepreneurship Group</div>
         <h1>SEG Data Dashboard</h1>
-        <p>Timeframe: 2017 to 26th August, 2026</p>
+        <p>Timeframe: 2017 to 17th September, 2026</p>
     </div>
     <div class="mck-runmeta">
         <div>Records<b>{len(fdf):,}</b></div>
