@@ -15,9 +15,21 @@ Data source (in priority order):
 2. Manual upload via the sidebar (fallback — used for local dev/testing, or
    if the remote source isn't configured).
 3. A local all_data.xlsx in the working directory (fallback for local dev).
+
+Extract revision note (Sep 2026)
+--------------------------------
+The extract gained two enterprise-classification columns:
+    tech_enabled                 -> Yes / No / unknown
+    traditional_non_traditional  -> traditional / non-traditional / blank
+Both are resolved and normalised here (see ENTERPRISE CHARACTER block below)
+rather than in data_utils, so this file stays drop-in compatible with the
+existing helper modules. They appear as two sidebar filters, two KPI cards,
+a dedicated set of charts in Section 03, agency/district splits in Section 04
+and an adoption trend line in Section 05.
 """
 
 import io
+import itertools
 import os
 import pandas as pd
 import numpy as np
@@ -61,6 +73,7 @@ CARD     = "#0D2233"
 AMBER    = "#F5B942"
 CORAL    = "#FF647C"
 GREEN    = "#35C98A"
+SLATE    = "#5C7386"   # baseline / "not X" / unclassified
 
 
 # Ordered so the first three carry the most weight; categorical charts stay
@@ -142,6 +155,16 @@ def compact_number(v) -> str:
     return f"{v:,.0f}"
 
 
+# Streamlit derives a chart's internal element ID from its type and
+# parameters, so two structurally identical figures collide and raise
+# StreamlitDuplicateElementId. That happens for real under narrow filter
+# selections, where several charts reduce to the same empty figure — so every
+# chart gets an explicit sequential key instead. The counter is module-level
+# and Streamlit re-executes the script top-to-bottom on each rerun, so it
+# resets itself every run.
+_CHART_SEQ = itertools.count()
+
+
 def show(fig, height: int = 340, labels: bool = True):
     """Single exit point for every chart, so spacing, hover behaviour and
     height stay identical across all six sections instead of drifting.
@@ -183,7 +206,8 @@ def show(fig, height: int = 340, labels: bool = True):
             # outside labels need headroom or they clip at the plot edge
             fig.update_layout(margin=dict(t=44, l=8, r=48, b=8))
 
-    st.plotly_chart(fig, width='stretch', config=PLOTLY_CONFIG)
+    st.plotly_chart(fig, width='stretch', config=PLOTLY_CONFIG,
+                    key=f"chart_{next(_CHART_SEQ)}")
 
 
 def section(number: str, title: str, standfirst: str = ""):
@@ -386,11 +410,132 @@ if not df["date_valid"].all():
     )
 
 # ---------------------------------------------------------------------------
+# 0b. ENTERPRISE CHARACTER — new extract columns (tech-enabled, traditional)
+#
+# These two arrived in the Sep 2026 extract revision. They are resolved by
+# pattern (the extract has a history of renaming columns between revisions,
+# and one of the header spellings in circulation is the misspelt
+# "tradional_non_traditional") and normalised into two stable label columns
+# plus two boolean flags. Everything downstream reads the derived columns, so
+# a future header change only needs the candidate lists below updated.
+#
+# Unclassified records are kept as an explicit "Not classified" bucket rather
+# than dropped or silently counted as "No" — in the current extract the same
+# ~3.0k records are blank on both fields, so treating them as negatives would
+# understate both shares.
+# ---------------------------------------------------------------------------
+
+TECH_LABEL_YES = "Tech-enabled"
+TECH_LABEL_NO = "Not tech-enabled"
+TRAD_LABEL_TRAD = "Traditional"
+TRAD_LABEL_NON = "Non-traditional"
+UNCLASSIFIED = "Not classified"
+
+TECH_ORDER = [TECH_LABEL_YES, TECH_LABEL_NO, UNCLASSIFIED]
+TRAD_ORDER = [TRAD_LABEL_TRAD, TRAD_LABEL_NON, UNCLASSIFIED]
+
+TECH_COLORS = {TECH_LABEL_YES: CYAN, TECH_LABEL_NO: SLATE, UNCLASSIFIED: "#2E4759"}
+TRAD_COLORS = {TRAD_LABEL_TRAD: SLATE, TRAD_LABEL_NON: GREEN, UNCLASSIFIED: "#2E4759"}
+
+TECH_COL_CANDIDATES = ["tech_enabled", "tech_enable", "is_tech_enabled",
+                       "technology_enabled", "tech_enabled_enterprise"]
+TRAD_COL_CANDIDATES = ["traditional_non_traditional", "tradional_non_traditional",
+                       "traditional_or_non_traditional", "traditional_nontraditional",
+                       "traditional_vs_non_traditional"]
+
+
+def _resolve_col(frame: pd.DataFrame, candidates, *, must_contain=(), must_not_contain=()):
+    """Exact match first, then a loose contains-match, so a renamed header in
+    a future extract still lands on the right column instead of silently
+    disabling the charts."""
+    for c in candidates:
+        if c in frame.columns:
+            return c
+    for c in frame.columns:
+        low = c.lower()
+        if all(t in low for t in must_contain) and not any(t in low for t in must_not_contain):
+            return c
+    return None
+
+
+TECH_COL = _resolve_col(df, TECH_COL_CANDIDATES, must_contain=("tech",),
+                        must_not_contain=("type", "technique"))
+TRAD_COL = _resolve_col(df, TRAD_COL_CANDIDATES, must_contain=("tradi",))
+
+TECH_LBL = "tech_enabled_label"
+TRAD_LBL = "traditional_label"
+
+
+def _norm_tech(series: pd.Series) -> pd.Series:
+    s = series.astype(str).str.strip().str.lower()
+    yes = s.isin({"yes", "y", "true", "1", "1.0", "tech enabled", "tech-enabled", "enabled"})
+    no = s.isin({"no", "n", "false", "0", "0.0", "not tech enabled", "not tech-enabled",
+                 "non tech enabled", "non-tech-enabled"})
+    out = pd.Series(UNCLASSIFIED, index=series.index, dtype="object")
+    out[no] = TECH_LABEL_NO
+    out[yes] = TECH_LABEL_YES
+    return out
+
+
+def _norm_trad(series: pd.Series) -> pd.Series:
+    s = series.astype(str).str.strip().str.lower()
+    s = s.str.replace(r"[\s_]+", "-", regex=True)
+    # order matters: "non-traditional" also contains "tradi"
+    non = s.str.contains("non") & s.str.contains("tradi")
+    trad = (~non) & s.str.contains("tradi")
+    out = pd.Series(UNCLASSIFIED, index=series.index, dtype="object")
+    out[trad] = TRAD_LABEL_TRAD
+    out[non] = TRAD_LABEL_NON
+    return out
+
+
+if TECH_COL:
+    df[TECH_LBL] = _norm_tech(df[TECH_COL])
+else:
+    df[TECH_LBL] = UNCLASSIFIED
+
+if TRAD_COL:
+    df[TRAD_LBL] = _norm_trad(df[TRAD_COL])
+else:
+    df[TRAD_LBL] = UNCLASSIFIED
+
+# Boolean flags — NaN where unclassified, so .mean() gives the share among
+# classified records only and never quietly counts blanks as a "No".
+df["is_tech_enabled"] = np.where(
+    df[TECH_LBL] == TECH_LABEL_YES, 1.0,
+    np.where(df[TECH_LBL] == TECH_LABEL_NO, 0.0, np.nan))
+df["is_non_traditional"] = np.where(
+    df[TRAD_LBL] == TRAD_LABEL_NON, 1.0,
+    np.where(df[TRAD_LBL] == TRAD_LABEL_TRAD, 0.0, np.nan))
+
+_missing_new_cols = [name for name, col in
+                     (("tech_enabled", TECH_COL), ("traditional_non_traditional", TRAD_COL))
+                     if col is None]
+if _missing_new_cols:
+    st.sidebar.markdown(
+        '<div class="side-note warn"><span class="dot"></span><span>Not found in this extract: '
+        + ", ".join(f"<code>{c}</code>" for c in _missing_new_cols) +
+        ' — the related filters and charts are hidden.</span></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def share_table(frame: pd.DataFrame, dim: str, flag: str, label: str) -> pd.DataFrame:
+    """Share of `flag` (a 1/0/NaN column) by `dim`, with the classified
+    denominator carried alongside so thin groups can be spotted."""
+    g = frame.groupby(dim)[flag].agg(pct="mean", classified="count").reset_index()
+    g["pct"] = g["pct"] * 100
+    g = g[g["classified"] > 0]
+    return g.rename(columns={"pct": label})
+
+
+# ---------------------------------------------------------------------------
 # 1. Global filters
 # ---------------------------------------------------------------------------
 
 FILTER_KEYS = ["fk_district", "fk_block", "fk_village", "fk_agency",
-               "fk_coord", "fk_phase", "fk_gender", "fk_fy", "fk_dates"]
+               "fk_coord", "fk_phase", "fk_gender", "fk_tech", "fk_trad",
+               "fk_fy", "fk_dates"]
 
 # Values that count as a woman entrepreneur — the extract has used several
 # spellings across revisions, so match on a normalised set rather than one.
@@ -440,6 +585,12 @@ f_phases = multiselect_sorted("Phase", "phase", "fk_phase")
 filter_group("Profile")
 f_genders = multiselect_sorted("Gender", "gender", "fk_gender")
 
+filter_group("Enterprise Character")
+_tech_opts = [v for v in TECH_ORDER if v in set(df[TECH_LBL].unique())]
+f_tech = st.sidebar.multiselect("Tech-enabled", _tech_opts, key="fk_tech")
+_trad_opts = [v for v in TRAD_ORDER if v in set(df[TRAD_LBL].unique())]
+f_trad = st.sidebar.multiselect("Traditional / Non-traditional", _trad_opts, key="fk_trad")
+
 filter_group("Period")
 fy_opts = sorted([x for x in df["financial_year"].dropna().unique()])
 f_fys = st.sidebar.multiselect("Financial Year", fy_opts, key="fk_fy")
@@ -457,12 +608,18 @@ fdf = apply_filters(
     financial_years=f_fys, phases=f_phases, date_range=f_date_range,
 )
 
-# Gender isn't a parameter of apply_filters, so it is applied on the result.
+# Gender and the two enterprise-character fields aren't parameters of
+# apply_filters, so they are applied on the result.
 if f_genders and "gender" in fdf.columns:
     fdf = fdf[fdf["gender"].isin(f_genders)]
+if f_tech:
+    fdf = fdf[fdf[TECH_LBL].isin(f_tech)]
+if f_trad:
+    fdf = fdf[fdf[TRAD_LBL].isin(f_trad)]
 
-_n_active = sum(bool(x) for x in [f_districts, f_blocks, f_villages, f_agencies,
-                                  f_coordinators, f_phases, f_genders, f_fys, f_date_range])
+_filter_values = [f_districts, f_blocks, f_villages, f_agencies, f_coordinators,
+                  f_phases, f_genders, f_tech, f_trad, f_fys, f_date_range]
+_n_active = sum(bool(x) for x in _filter_values)
 st.sidebar.markdown(
     f'''<div class="flt-status">
          <div><span>Active filters</span><b>{_n_active}</b></div>
@@ -474,8 +631,7 @@ st.sidebar.button("Clear all filters", on_click=reset_filters, width='stretch')
 
 
 _generated_at = pd.Timestamp.now().strftime("%d %b %Y, %H:%M")
-_active_filters = sum(bool(x) for x in [f_districts, f_blocks, f_villages, f_agencies,
-                                        f_coordinators, f_phases, f_genders, f_fys, f_date_range])
+_active_filters = _n_active
 _coverage = f"{len(fdf) / max(len(df), 1) * 100:.0f}%"
 
 st.markdown(f"""
@@ -526,6 +682,14 @@ women_entrepreneurs = int(is_female(fdf["gender"]).sum()) if "gender" in fdf.col
 # own money put into the enterprise.
 total_finance_unlocked = float(k["total_loan_mobilized"]) + float(k["total_savings_invested"])
 
+# Enterprise-character headline figures. Denominators exclude unclassified
+# records, which is why the two "of classified" deltas are spelled out.
+n_tech = int((fdf[TECH_LBL] == TECH_LABEL_YES).sum())
+n_tech_classified = int(fdf["is_tech_enabled"].notna().sum())
+n_nontrad = int((fdf[TRAD_LBL] == TRAD_LABEL_NON).sum())
+n_trad_classified = int(fdf["is_non_traditional"].notna().sum())
+n_unclassified = int((fdf[TECH_LBL] == UNCLASSIFIED).sum())
+
 r1 = st.columns(4)
 r1[0].metric("Total Entrepreneurs", f"{k['total_entrepreneurs']:,}")
 r1[1].metric("Youth (≤29 Years)", f"{k['youth_entrepreneurs']:,}",
@@ -552,12 +716,46 @@ r2[2].metric("Green Enterprises", f"{k['green_enterprises']:,}", f"{k['green_pct
 r2[3].metric("CO₂ Mitigated Till Date", f"{k['co2_mitigated_till_date']:,.1f} tCO2e")
 
 r3 = st.columns(4)
-r3[0].metric("Total Savings Invested", format_indian_number(k['total_savings_invested']))
-r3[1].metric("Total Loan Mobilized", format_indian_number(k['total_loan_mobilized']))
-r3[2].metric("Total Finance Unlocked", format_indian_number(total_finance_unlocked),
+# Three distinct states, kept distinct: column absent from the extract, column
+# present but nothing classified in this selection, and a real share.
+if not TECH_COL:
+    _tech_delta = "no tech_enabled column in extract"
+elif not n_tech_classified:
+    _tech_delta = "no classified records in selection"
+else:
+    _tech_delta = f"{n_tech / n_tech_classified * 100:.1f}% of classified"
+
+if not TRAD_COL:
+    _trad_delta = "no traditional column in extract"
+elif not n_trad_classified:
+    _trad_delta = "no classified records in selection"
+else:
+    _trad_delta = f"{n_nontrad / n_trad_classified * 100:.1f}% of classified"
+
+r3[0].metric("Tech-Enabled Enterprises", f"{n_tech:,}" if TECH_COL else "—",
+             _tech_delta, delta_color="off")
+r3[1].metric("Non-Traditional Enterprises", f"{n_nontrad:,}" if TRAD_COL else "—",
+             _trad_delta, delta_color="off")
+r3[2].metric("Total Loan Mobilized", format_indian_number(k['total_loan_mobilized']))
+r3[3].metric("Total Finance Unlocked", format_indian_number(total_finance_unlocked),
              "loan + own savings", delta_color="off")
-r3[3].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%",
+
+r4 = st.columns(4)
+r4[0].metric("Total Savings Invested", format_indian_number(k['total_savings_invested']))
+r4[1].metric("Verification Rate", f"{k['verification_rate_pct']:.1f}%",
              f"{k['data_correct_rate_pct']:.1f}% flagged correct")
+r4[2].metric("Classified on Character", f"{n_tech_classified:,}",
+             f"{n_unclassified:,} records not yet classified", delta_color="off")
+r4[3].metric("Avg. Jobs per Enterprise",
+             f"{k['total_jobs_created'] / max(k['total_entrepreneurs'], 1):.2f}",
+             "employees per enterprise", delta_color="off")
+
+st.caption(
+    "Tech-enabled and non-traditional shares are expressed against the records that carry a "
+    "classification on those two fields, not against all records — blanks are reported "
+    "separately as 'Classified on Character' rather than counted as a 'No', which would "
+    "understate both shares."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -642,6 +840,51 @@ if len(melt_cols):
                "'Average loan size' is computed only among entrepreneurs who actually borrowed from that "
                "source, not averaged over everyone.")
 
+# --- Capital by enterprise character ----------------------------------------
+if TECH_COL or TRAD_COL:
+    st.subheader("Capital by enterprise character")
+    cc1, cc2 = st.columns(2)
+
+    with cc1:
+        if TECH_COL and "total_loan_amount" in fdf.columns:
+            st.caption("Average loan & investment per enterprise — tech-enabled vs. not")
+            agg = fdf.groupby(TECH_LBL).agg(
+                avg_loan=("total_loan_amount", "mean"),
+                avg_investment=("total_investment", "mean")
+                if "total_investment" in fdf.columns else ("total_loan_amount", "mean"),
+            ).reindex([v for v in TECH_ORDER if v in fdf[TECH_LBL].unique()]).reset_index()
+            fig = go.Figure()
+            fig.add_bar(x=agg[TECH_LBL], y=agg["avg_loan"], name="Avg. loan (₹)",
+                        marker_color=CYAN)
+            fig.add_bar(x=agg[TECH_LBL], y=agg["avg_investment"], name="Avg. investment (₹)",
+                        marker_color=SKY)
+            fig.update_layout(barmode="group", template=PLOTLY_TEMPLATE,
+                              xaxis_title="", yaxis_title="₹ per enterprise",
+                              legend=dict(orientation="h", y=1.1))
+            show(fig)
+
+    with cc2:
+        if TRAD_COL and "total_loan_amount" in fdf.columns:
+            st.caption("Average loan & investment per enterprise — traditional vs. non-traditional")
+            agg = fdf.groupby(TRAD_LBL).agg(
+                avg_loan=("total_loan_amount", "mean"),
+                avg_investment=("total_investment", "mean")
+                if "total_investment" in fdf.columns else ("total_loan_amount", "mean"),
+            ).reindex([v for v in TRAD_ORDER if v in fdf[TRAD_LBL].unique()]).reset_index()
+            fig = go.Figure()
+            fig.add_bar(x=agg[TRAD_LBL], y=agg["avg_loan"], name="Avg. loan (₹)",
+                        marker_color=GREEN)
+            fig.add_bar(x=agg[TRAD_LBL], y=agg["avg_investment"], name="Avg. investment (₹)",
+                        marker_color=AMBER)
+            fig.update_layout(barmode="group", template=PLOTLY_TEMPLATE,
+                              xaxis_title="", yaxis_title="₹ per enterprise",
+                              legend=dict(orientation="h", y=1.1))
+            show(fig)
+
+    st.caption("Averages are per enterprise across every record in the group, including those that "
+               "borrowed or invested nothing — so these read as 'capital intensity of the segment', "
+               "not as average ticket size among borrowers.")
+
 st.subheader("Investment vs. Loan Amount by Sector")
 if {"total_investment", "total_loan_amount", "sector1"}.issubset(fdf.columns):
     plot_df = fdf.dropna(subset=["total_investment", "total_loan_amount", "sector1"])
@@ -682,7 +925,7 @@ if {"total_loan_amount", "individual_saving_invested"}.issubset(fdf.columns):
 # 4. Section 3 — Sector & Enterprise Deep-Dive
 # ---------------------------------------------------------------------------
 
-section("03", "Sector &amp; Enterprise Deep-Dive", "Composition of the portfolio by sector, enterprise type and entrepreneur profile.")
+section("03", "Sector &amp; Enterprise Deep-Dive", "Composition of the portfolio by sector, enterprise type, enterprise character and entrepreneur profile.")
 
 c1, c2 = st.columns([1, 1])
 with c1:
@@ -722,6 +965,136 @@ if {"sector1", "enterprise_type"}.issubset(fdf.columns):
                  color_discrete_sequence=[LEAD])
     fig.update_layout(yaxis={"categoryorder": "total ascending"}, yaxis_title="", xaxis_title="Entrepreneurs")
     show(fig)
+
+# --- Enterprise character ----------------------------------------------------
+if TECH_COL or TRAD_COL:
+    st.divider()
+    st.subheader("Enterprise Character — Tech-Enabled & Traditional / Non-Traditional")
+
+    ec1, ec2, ec3 = st.columns(3)
+
+    with ec1:
+        st.caption("Tech-enabled split")
+        if TECH_COL:
+            tc = fdf[TECH_LBL].value_counts().reindex(
+                [v for v in TECH_ORDER if v in fdf[TECH_LBL].unique()]).reset_index()
+            tc.columns = ["status", "count"]
+            fig = px.pie(tc, names="status", values="count", template=PLOTLY_TEMPLATE,
+                         color="status", color_discrete_map=TECH_COLORS, hole=0.42)
+            fig.update_traces(textinfo="percent+label")
+            show(fig)
+
+    with ec2:
+        st.caption("Traditional vs. non-traditional split")
+        if TRAD_COL:
+            rc = fdf[TRAD_LBL].value_counts().reindex(
+                [v for v in TRAD_ORDER if v in fdf[TRAD_LBL].unique()]).reset_index()
+            rc.columns = ["status", "count"]
+            fig = px.pie(rc, names="status", values="count", template=PLOTLY_TEMPLATE,
+                         color="status", color_discrete_map=TRAD_COLORS, hole=0.42)
+            fig.update_traces(textinfo="percent+label")
+            show(fig)
+
+    with ec3:
+        st.caption("Tech-enabled × traditional (record counts)")
+        if TECH_COL and TRAD_COL:
+            cross = pd.crosstab(fdf[TECH_LBL], fdf[TRAD_LBL])
+            cross = cross.reindex(index=[v for v in TECH_ORDER if v in cross.index],
+                                  columns=[v for v in TRAD_ORDER if v in cross.columns])
+            if cross.size:
+                fig = px.imshow(cross, template=PLOTLY_TEMPLATE, aspect="auto",
+                                color_continuous_scale=[[0, "#14304A"], [1, CYAN]],
+                                labels=dict(x="", y="", color="Enterprises"))
+                show(fig)
+
+    st.caption(
+        "The two classifications are not independent: non-traditional enterprises are far more "
+        "likely to be tech-enabled, and the cells on the right quantify that overlap. Records "
+        "blank on one field are blank on both in the current extract."
+    )
+
+    cc1, cc2 = st.columns(2)
+    with cc1:
+        st.caption("Tech-enabled share by sector (% of classified records)")
+        if TECH_COL and "sector1" in fdf.columns:
+            g = share_table(fdf, "sector1", "is_tech_enabled", "tech_pct").sort_values("tech_pct")
+            fig = px.bar(g, x="tech_pct", y="sector1", orientation="h", template=PLOTLY_TEMPLATE,
+                         color_discrete_sequence=[CYAN],
+                         labels={"tech_pct": "% tech-enabled", "sector1": "Sector"},
+                         custom_data=["classified"])
+            fig.update_traces(hovertemplate="%{y}<br>%{x:.1f}% tech-enabled"
+                                            "<br>%{customdata[0]:,} classified records<extra></extra>")
+            fig.update_layout(yaxis_title="", xaxis_title="% tech-enabled")
+            show(fig)
+    with cc2:
+        st.caption("Non-traditional share by sector (% of classified records)")
+        if TRAD_COL and "sector1" in fdf.columns:
+            g = share_table(fdf, "sector1", "is_non_traditional", "nontrad_pct").sort_values("nontrad_pct")
+            fig = px.bar(g, x="nontrad_pct", y="sector1", orientation="h", template=PLOTLY_TEMPLATE,
+                         color_discrete_sequence=[GREEN],
+                         labels={"nontrad_pct": "% non-traditional", "sector1": "Sector"},
+                         custom_data=["classified"])
+            fig.update_traces(hovertemplate="%{y}<br>%{x:.1f}% non-traditional"
+                                            "<br>%{customdata[0]:,} classified records<extra></extra>")
+            fig.update_layout(yaxis_title="", xaxis_title="% non-traditional")
+            show(fig)
+
+    cc1, cc2 = st.columns(2)
+    with cc1:
+        st.caption("Enterprise character by sector (record counts)")
+        if TECH_COL and "sector1" in fdf.columns:
+            ct = fdf.groupby(["sector1", TECH_LBL]).size().reset_index(name="count")
+            fig = px.bar(ct, x="sector1", y="count", color=TECH_LBL, barmode="stack",
+                         template=PLOTLY_TEMPLATE, color_discrete_map=TECH_COLORS,
+                         category_orders={TECH_LBL: TECH_ORDER})
+            fig.update_layout(xaxis_title="", yaxis_title="Entrepreneurs")
+            show(fig)
+    with cc2:
+        st.caption("Traditional / non-traditional by sector (record counts)")
+        if TRAD_COL and "sector1" in fdf.columns:
+            ct = fdf.groupby(["sector1", TRAD_LBL]).size().reset_index(name="count")
+            fig = px.bar(ct, x="sector1", y="count", color=TRAD_LBL, barmode="stack",
+                         template=PLOTLY_TEMPLATE, color_discrete_map=TRAD_COLORS,
+                         category_orders={TRAD_LBL: TRAD_ORDER})
+            fig.update_layout(xaxis_title="", yaxis_title="Entrepreneurs")
+            show(fig)
+
+    cc1, cc2 = st.columns(2)
+    with cc1:
+        st.caption("Tech-enabled share by gender (% of classified records)")
+        if TECH_COL and "gender" in fdf.columns:
+            g = share_table(fdf, "gender", "is_tech_enabled", "tech_pct").sort_values("tech_pct")
+            fig = px.bar(g, x="tech_pct", y="gender", orientation="h", template=PLOTLY_TEMPLATE,
+                         color_discrete_sequence=[SKY],
+                         labels={"tech_pct": "% tech-enabled", "gender": "Gender"})
+            fig.update_layout(yaxis_title="", xaxis_title="% tech-enabled")
+            show(fig)
+    with cc2:
+        st.caption("Top 10 enterprise types among tech-enabled enterprises")
+        if TECH_COL and "enterprise_type" in fdf.columns:
+            te = fdf.loc[fdf[TECH_LBL] == TECH_LABEL_YES, "enterprise_type"]
+            top_te = te.value_counts().head(10).reset_index()
+            top_te.columns = ["enterprise_type", "count"]
+            if len(top_te):
+                fig = px.bar(top_te, x="count", y="enterprise_type", orientation="h",
+                             template=PLOTLY_TEMPLATE, color_discrete_sequence=[CYAN])
+                fig.update_layout(yaxis={"categoryorder": "total ascending"},
+                                  yaxis_title="", xaxis_title="Entrepreneurs")
+                show(fig)
+            else:
+                st.caption("No tech-enabled records for the current filter selection.")
+
+    with st.expander("Enterprise character cross-tab (counts and shares)"):
+        rows = []
+        if "sector1" in fdf.columns:
+            base = fdf.groupby("sector1").size().rename("records")
+            tbl = pd.concat([
+                base,
+                fdf.groupby("sector1")["is_tech_enabled"].mean().mul(100).round(1).rename("% tech-enabled"),
+                fdf.groupby("sector1")["is_non_traditional"].mean().mul(100).round(1).rename("% non-traditional"),
+                fdf.groupby("sector1")["is_tech_enabled"].count().rename("classified records"),
+            ], axis=1).reset_index().rename(columns={"sector1": "Sector", "records": "Records"})
+            st.dataframe(tbl, width='stretch', hide_index=True)
 
 c3, c4 = st.columns(2)
 with c3:
@@ -770,8 +1143,12 @@ if "agency" in fdf.columns:
         jobs_created=("total_employees", "sum"),
         green_pct=("is_green_flag", "mean"),
         loan_mobilized=("total_loan_amount", "sum"),
+        tech_pct=("is_tech_enabled", "mean"),
+        nontrad_pct=("is_non_traditional", "mean"),
     ).reset_index()
     agency_agg["green_pct"] = agency_agg["green_pct"] * 100
+    agency_agg["tech_pct"] = agency_agg["tech_pct"] * 100
+    agency_agg["nontrad_pct"] = agency_agg["nontrad_pct"] * 100
     agency_agg = agency_agg.sort_values("onboarded", ascending=False)
 
     a1, a2, a3, a4 = st.columns(4)
@@ -799,6 +1176,28 @@ if "agency" in fdf.columns:
                      template=PLOTLY_TEMPLATE, color_discrete_sequence=[AMBER])
         fig.update_layout(yaxis_title="", xaxis_title="")
         show(fig)
+
+    if TECH_COL or TRAD_COL:
+        b1, b2 = st.columns(2)
+        with b1:
+            st.caption("Tech-enabled % by agency")
+            if TECH_COL:
+                fig = px.bar(agency_agg.dropna(subset=["tech_pct"]).sort_values("tech_pct"),
+                             x="tech_pct", y="agency", orientation="h",
+                             template=PLOTLY_TEMPLATE, color_discrete_sequence=[CYAN])
+                fig.update_layout(yaxis_title="", xaxis_title="% tech-enabled")
+                show(fig)
+        with b2:
+            st.caption("Non-traditional % by agency")
+            if TRAD_COL:
+                fig = px.bar(agency_agg.dropna(subset=["nontrad_pct"]).sort_values("nontrad_pct"),
+                             x="nontrad_pct", y="agency", orientation="h",
+                             template=PLOTLY_TEMPLATE, color_discrete_sequence=[GREEN])
+                fig.update_layout(yaxis_title="", xaxis_title="% non-traditional")
+                show(fig)
+        st.caption("Both percentages use each agency's classified records as the denominator, so an "
+                   "agency with a large unclassified backlog is not penalised — check the record "
+                   "counts in the table below before reading too much into a thin bar.")
 else:
     st.caption("No agency field available for the current filter selection.")
 
@@ -812,8 +1211,12 @@ if geo_dim in fdf.columns:
         onboarded=("ID", "nunique") if "ID" in fdf.columns else (geo_dim, "size"),
         green_pct=("is_green_flag", "mean"),
         loan_mobilized=("total_loan_amount", "sum"),
+        tech_pct=("is_tech_enabled", "mean"),
+        nontrad_pct=("is_non_traditional", "mean"),
     ).reset_index()
     agg["green_pct"] = agg["green_pct"] * 100
+    agg["tech_pct"] = agg["tech_pct"] * 100
+    agg["nontrad_pct"] = agg["nontrad_pct"] * 100
     agg = agg.sort_values("onboarded", ascending=False)
 
     c1, c2, c3 = st.columns(3)
@@ -835,6 +1238,38 @@ if geo_dim in fdf.columns:
                      template=PLOTLY_TEMPLATE, color_discrete_sequence=[CORAL])
         fig.update_layout(yaxis_title="", xaxis_title="")
         show(fig)
+
+    if TECH_COL or TRAD_COL:
+        d1, d2 = st.columns(2)
+        with d1:
+            st.caption("Tech-enabled % by district")
+            if TECH_COL:
+                fig = px.bar(agg.dropna(subset=["tech_pct"]).sort_values("tech_pct"),
+                             x="tech_pct", y=geo_dim, orientation="h",
+                             template=PLOTLY_TEMPLATE, color_discrete_sequence=[CYAN])
+                fig.update_layout(yaxis_title="", xaxis_title="% tech-enabled")
+                show(fig)
+        with d2:
+            st.caption("Non-traditional % by district")
+            if TRAD_COL:
+                fig = px.bar(agg.dropna(subset=["nontrad_pct"]).sort_values("nontrad_pct"),
+                             x="nontrad_pct", y=geo_dim, orientation="h",
+                             template=PLOTLY_TEMPLATE, color_discrete_sequence=[GREEN])
+                fig.update_layout(yaxis_title="", xaxis_title="% non-traditional")
+                show(fig)
+
+        with st.expander("District table — onboarding, tech-enabled and non-traditional shares"):
+            _dt = agg[[geo_dim, "onboarded", "tech_pct", "nontrad_pct", "green_pct"]].copy()
+            for c in ("tech_pct", "nontrad_pct", "green_pct"):
+                _dt[c] = _dt[c].round(1)
+            st.dataframe(
+                _dt.rename(columns={
+                    geo_dim: "District", "onboarded": "Onboarded",
+                    "tech_pct": "% tech-enabled", "nontrad_pct": "% non-traditional",
+                    "green_pct": "% green",
+                }),
+                width='stretch', hide_index=True,
+            )
 
 st.subheader("Data quality status by district")
 if "verification_status" in fdf.columns:
@@ -864,7 +1299,7 @@ if len(targets_merged):
     tv["pct_live"] = tv["live_extract_count"] / tv["target"].replace(0, np.nan) * 100
 
     fig = go.Figure()
-    fig.add_bar(x=tv["district1"], y=tv["target"], name="Target", marker_color="#5C7386")
+    fig.add_bar(x=tv["district1"], y=tv["target"], name="Target", marker_color=SLATE)
     fig.add_bar(x=tv["district1"], y=tv["live_extract_count"], name="Achieved (live count)",
                 marker_color=CYAN)
     fig.update_layout(barmode="group", template=PLOTLY_TEMPLATE, yaxis_title=metric_pick,
@@ -936,6 +1371,55 @@ if "financial_year" in tdf.columns:
     )
     show(fig)
 
+# --- Enterprise character over time ------------------------------------------
+if TECH_COL or TRAD_COL:
+    st.subheader("Enterprise character over time")
+    if "financial_year" in tdf.columns:
+        fy_char = tdf.groupby("financial_year").agg(
+            tech_pct=("is_tech_enabled", "mean"),
+            nontrad_pct=("is_non_traditional", "mean"),
+            classified=("is_tech_enabled", "count"),
+        ).reset_index().sort_values("financial_year")
+        fy_char["tech_pct"] = fy_char["tech_pct"] * 100
+        fy_char["nontrad_pct"] = fy_char["nontrad_pct"] * 100
+
+        fig = go.Figure()
+        if TECH_COL:
+            fig.add_trace(go.Scatter(x=fy_char["financial_year"], y=fy_char["tech_pct"],
+                                     name="% tech-enabled", mode="lines+markers",
+                                     line=dict(color=CYAN, width=2)))
+        if TRAD_COL:
+            fig.add_trace(go.Scatter(x=fy_char["financial_year"], y=fy_char["nontrad_pct"],
+                                     name="% non-traditional", mode="lines+markers",
+                                     line=dict(color=GREEN, width=2)))
+        fig.update_layout(template=PLOTLY_TEMPLATE, xaxis_title="Financial Year",
+                          yaxis=dict(title="% of classified records", rangemode="tozero"),
+                          legend=dict(orientation="h", y=1.1))
+        show(fig)
+        st.caption("Read as cohort composition: the share of each year's newly-onboarded, classified "
+                   "enterprises that were tech-enabled or non-traditional. A rising line means newer "
+                   "cohorts are shifting, not that existing enterprises changed category.")
+
+    cch1, cch2 = st.columns(2)
+    with cch1:
+        st.caption("Tech-enabled vs. not — onboarding volume by month")
+        if TECH_COL and "onboard_month" in tdf.columns:
+            gm = tdf.groupby(["onboard_month", TECH_LBL]).size().reset_index(name="count")
+            fig = px.area(gm, x="onboard_month", y="count", color=TECH_LBL,
+                          template=PLOTLY_TEMPLATE, color_discrete_map=TECH_COLORS,
+                          category_orders={TECH_LBL: TECH_ORDER},
+                          labels={"onboard_month": "Month", "count": "Entrepreneurs"})
+            show(fig)
+    with cch2:
+        st.caption("Traditional vs. non-traditional — onboarding volume by month")
+        if TRAD_COL and "onboard_month" in tdf.columns:
+            gm = tdf.groupby(["onboard_month", TRAD_LBL]).size().reset_index(name="count")
+            fig = px.area(gm, x="onboard_month", y="count", color=TRAD_LBL,
+                          template=PLOTLY_TEMPLATE, color_discrete_map=TRAD_COLORS,
+                          category_orders={TRAD_LBL: TRAD_ORDER},
+                          labels={"onboard_month": "Month", "count": "Entrepreneurs"})
+            show(fig)
+
 st.subheader("Enterprise growth — new vs. existing, over time")
 if {"onboard_month", "new_or_existing"}.issubset(tdf.columns):
     growth = tdf.groupby(["onboard_month", "new_or_existing"]).size().reset_index(name="count")
@@ -988,10 +1472,17 @@ if "onboard_month" in tdf.columns:
         Jobs=("total_employees", "sum"),
         Green_Enterprises=("is_green_flag", "sum"),
         CO2_Mitigated=("co2_mitigated_tonnes_per_month", "sum"),
+        Tech_Enabled=("is_tech_enabled", "sum"),
+        Non_Traditional=("is_non_traditional", "sum"),
     ).reset_index().sort_values("onboard_month")
 
     # index each series to 100 at its first period so scales are comparable
     plot_cols = ["Entrepreneurs", "Jobs", "Green_Enterprises", "CO2_Mitigated"]
+    if TECH_COL:
+        plot_cols.append("Tech_Enabled")
+    if TRAD_COL:
+        plot_cols.append("Non_Traditional")
+
     indexed = monthly.copy()
     for c in plot_cols:
         base = indexed[c].iloc[0] if len(indexed) and indexed[c].iloc[0] not in (0, np.nan) else 1
@@ -1026,7 +1517,7 @@ with c1:
         solar_counts = fdf["are_you_using_solar_electricity"].value_counts().reset_index()
         solar_counts.columns = ["status", "count"]
         fig = px.pie(solar_counts, names="status", values="count", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[GREEN, "#5C7386"], hole=0.4)
+                     color_discrete_sequence=[GREEN, SLATE], hole=0.4)
         fig.update_traces(textinfo="percent+label")
         show(fig)
 
@@ -1053,6 +1544,29 @@ with c3:
         else:
             st.caption("No solar capacity data for current filter selection.")
 
+# --- Green × enterprise character -------------------------------------------
+if TECH_COL or TRAD_COL:
+    st.subheader("Green adoption by enterprise character")
+    gc1, gc2 = st.columns(2)
+    with gc1:
+        st.caption("Green % — tech-enabled vs. not")
+        if TECH_COL and "is_green_flag" in fdf.columns:
+            g = fdf.groupby(TECH_LBL)["is_green_flag"].mean().mul(100).reindex(
+                [v for v in TECH_ORDER if v in fdf[TECH_LBL].unique()]).reset_index(name="green_pct")
+            fig = px.bar(g, x=TECH_LBL, y="green_pct", template=PLOTLY_TEMPLATE,
+                         color=TECH_LBL, color_discrete_map=TECH_COLORS)
+            fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="% green")
+            show(fig)
+    with gc2:
+        st.caption("Green % — traditional vs. non-traditional")
+        if TRAD_COL and "is_green_flag" in fdf.columns:
+            g = fdf.groupby(TRAD_LBL)["is_green_flag"].mean().mul(100).reindex(
+                [v for v in TRAD_ORDER if v in fdf[TRAD_LBL].unique()]).reset_index(name="green_pct")
+            fig = px.bar(g, x=TRAD_LBL, y="green_pct", template=PLOTLY_TEMPLATE,
+                         color=TRAD_LBL, color_discrete_map=TRAD_COLORS)
+            fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="% green")
+            show(fig)
+
 # --- Waste & water -----------------------------------------------------------
 st.subheader("Waste & Water")
 c1, c2, c3 = st.columns(3)
@@ -1073,7 +1587,7 @@ with c2:
         reuse_counts = fdf["do_you_reuse_your_water"].value_counts().reset_index()
         reuse_counts.columns = ["status", "count"]
         fig = px.pie(reuse_counts, names="status", values="count", template=PLOTLY_TEMPLATE,
-                     color_discrete_sequence=[CYAN, "#5C7386"], hole=0.4)
+                     color_discrete_sequence=[CYAN, SLATE], hole=0.4)
         fig.update_traces(textinfo="percent+label")
         show(fig)
 
