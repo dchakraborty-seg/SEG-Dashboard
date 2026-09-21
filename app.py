@@ -43,7 +43,7 @@ from data_utils import load_data, apply_filters, split_multiselect_counts, DATE_
 from kpi_utils import compute_kpis, format_indian_number
 from targets_utils import target_vs_achieved, METRIC_LABELS
 
-st.set_page_config(page_title="WEE / M&E Dashboard", layout="wide", page_icon="📊")
+st.set_page_config(page_title="M&E Dashboard", layout="wide", page_icon="📊")
 
 # ---------------------------------------------------------------------------
 # Brand tokens — single source of truth for every color/font in the app.
@@ -1076,29 +1076,6 @@ if TECH_COL or TRAD_COL:
             else:
                 st.caption("No records for the current filter selection.")
 
-    # Full width: a 3x3 contingency grid squeezed into a one-third column has
-    # cells too narrow to hold their own numbers.
-    st.caption("Tech-enabled × traditional (record counts)")
-    if TECH_COL and TRAD_COL:
-        cross = pd.crosstab(fdf[TECH_LBL], fdf[TRAD_LBL])
-        cross = cross.reindex(index=[v for v in TECH_ORDER if v in cross.index],
-                              columns=[v for v in TRAD_ORDER if v in cross.columns])
-        if cross.size:
-            fig = px.imshow(cross, template=PLOTLY_TEMPLATE, aspect="auto",
-                            color_continuous_scale=[[0, "#14304A"], [1, CYAN]],
-                            labels=dict(x="", y="", color="Enterprises"))
-            fig.update_xaxes(side="bottom", tickangle=0)
-            fig.update_yaxes(tickangle=0)
-            fig.update_traces(
-                hovertemplate="%{y} &times; %{x}<br>%{z:,} enterprises<extra></extra>")
-            show(fig, height=260)
-
-    st.caption(
-        "Cell labels are abbreviated (19.5k = 19,531) to fit; hover for the exact count. "
-        "The two classifications are not independent: non-traditional enterprises are far more "
-        "likely to be tech-enabled, and the grid quantifies that overlap. Records blank on one "
-        "field are blank on both in the current extract."
-    )
 
     cc1, cc2 = st.columns(2)
     with cc1:
