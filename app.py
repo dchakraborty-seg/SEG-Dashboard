@@ -155,6 +155,30 @@ def compact_number(v) -> str:
     return f"{v:,.0f}"
 
 
+def tiny_number(v) -> str:
+    """Even shorter than compact_number, for labels that sit inside a fixed
+    box — heatmap cells especially, where a full '19,531' is wider than the
+    cell and collides with its neighbour."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return ""
+    if pd.isna(v):
+        return ""
+    a = abs(v)
+    if a >= 1e7:
+        return f"{v / 1e7:.1f}Cr"
+    if a >= 1e5:
+        return f"{v / 1e5:.1f}L"
+    if a >= 1000:
+        # always one decimal, so 19,531 reads as 19.5k rather than rounding
+        # to a flat 20k and losing the precision the cell had room for
+        return f"{v / 1000:.1f}k"
+    if a and abs(v - round(v)) > 1e-9:
+        return f"{v:,.1f}"
+    return f"{v:,.0f}"
+
+
 # Streamlit derives a chart's internal element ID from its type and
 # parameters, so two structurally identical figures collide and raise
 # StreamlitDuplicateElementId. That happens for real under narrow filter
@@ -178,6 +202,8 @@ def show(fig, height: int = 340, labels: bool = True):
 
     if labels:
         stacked = fig.layout.barmode in ("stack", "relative")
+        placed_outside_labels = False
+        has_heatmap = False
         for tr in fig.data:
             kind = tr.type
             if kind == "bar":
@@ -191,20 +217,50 @@ def show(fig, height: int = 340, labels: bool = True):
                 tr.cliponaxis = False
                 if stacked:
                     tr.insidetextanchor = "middle"
+                else:
+                    placed_outside_labels = True
             elif kind == "pie":
-                tr.textinfo = "label+value+percent"
-                tr.textfont = dict(size=10)
+                # Stamping label + value + percent into a slice forces Plotly
+                # to rotate the text to fit, and pushes anything that still
+                # won't fit outside on a leader line — where small slices'
+                # callouts overlap each other. Percent only, held horizontal,
+                # stays readable; the category name is carried by the legend
+                # and the exact count by the hover.
+                tr.textinfo = "percent"
+                tr.texttemplate = "%{percent:.1%}"
+                tr.textposition = "inside"
+                tr.insidetextorientation = "horizontal"
+                tr.textfont = dict(size=11)
+                tr.hovertemplate = "%{label}<br>%{value:,} enterprises (%{percent})<extra></extra>"
+                tr.automargin = True
             elif kind == "heatmap":
-                tr.texttemplate = "%{z}"
-                tr.textfont = dict(size=9)
+                # %{z} prints the raw value, which overflows a narrow cell and
+                # runs into the next one. Abbreviate, and drop the labels
+                # entirely on a grid too dense to carry them.
+                has_heatmap = True
+                z = np.asarray(tr.z, dtype=float) if tr.z is not None else None
+                if z is not None and z.size and z.size <= 240:
+                    tr.text = [[tiny_number(v) for v in row] for row in z]
+                    tr.texttemplate = "%{text}"
+                    tr.textfont = dict(size=10)
+                else:
+                    tr.texttemplate = None
             elif kind == "scatter" and "markers" in (getattr(tr, "mode", "") or ""):
                 tr.text = [compact_number(v) for v in (tr.y if tr.y is not None else [])]
                 tr.mode = tr.mode if "text" in tr.mode else tr.mode + "+text"
                 tr.textposition = "top center"
                 tr.textfont = dict(size=9)
-        if not stacked:
-            # outside labels need headroom or they clip at the plot edge
+        if placed_outside_labels:
+            # Outside bar labels need headroom or they clip at the plot edge.
+            # This is scoped to figures that actually carry them — applying it
+            # to every non-stacked figure squeezed the left/bottom margin on
+            # heatmaps and pies too, which clipped their category labels and
+            # forced Plotly to rotate the tick text to fit.
             fig.update_layout(margin=dict(t=44, l=8, r=48, b=8))
+        if has_heatmap:
+            # Let the axes claim whatever room their category names need.
+            fig.update_xaxes(automargin=True)
+            fig.update_yaxes(automargin=True)
 
     st.plotly_chart(fig, width='stretch', config=PLOTLY_CONFIG,
                     key=f"chart_{next(_CHART_SEQ)}")
@@ -256,7 +312,7 @@ def inject_theme():
         section[data-testid="stSidebar"] label {{ color: #AFC2D1 !important; font-size: .73rem !important; font-weight: 600 !important; }}
         section[data-testid="stSidebar"] [data-baseweb="select"] > div,
         section[data-testid="stSidebar"] [data-baseweb="input"] > div {{
-            background: #1038 !important; border: 1px solid #28465A !important; border-radius: 8px !important;
+            background: #102638 !important; border: 1px solid #28465A !important; border-radius: 8px !important;
         }}
         section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] {{ background: rgba(24,182,242,.18) !important; border: 1px solid rgba(24,182,242,.35); border-radius: 6px !important; }}
         section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] * {{ color: #BDEBFA !important; }}
@@ -270,7 +326,7 @@ def inject_theme():
         .flt-head {{ display:flex; align-items:center; justify-content:space-between; font-size:.68rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:#fff; padding:.75rem 0 .55rem; border-bottom:1px solid var(--border); }}
         .flt-group {{ font-size:.61rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:{SKY}; margin:1.05rem 0 .25rem; }}
         .flt-status {{ display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin:1rem 0 .65rem; }}
-        .flt-status div {{ background:#1038; border:1px solid #28465A; border-radius:9px; padding:.6rem .65rem; }}
+        .flt-status div {{ background:#102638; border:1px solid #28465A; border-radius:9px; padding:.6rem .65rem; }}
         .flt-status span {{ display:block; color:{ON_DARK_M}; font-size:.56rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }}
         .flt-status b {{ display:block; color:#fff; font-size:1rem; margin-top:.15rem; }}
 
@@ -300,7 +356,7 @@ def inject_theme():
 
         /* Chart and data surfaces */
         [data-testid="stPlotlyChart"] {{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:.3rem .3rem .1rem; box-shadow:0 8px 24px rgba(0,0,0,.10); overflow:visible; }}
-        [data-testid="stElementToolbar"] {{ z-index:5; background:#1038 !important; border:1px solid var(--border); border-radius:8px; }}
+        [data-testid="stElementToolbar"] {{ z-index:5; background:#102638 !important; border:1px solid var(--border); border-radius:8px; }}
         [data-testid="stElementToolbarButton"] svg, [data-testid="stElementToolbar"] button svg {{ fill:var(--muted) !important; color:var(--muted) !important; }}
         [data-testid="stElementToolbar"] button:hover svg {{ fill:var(--cyan) !important; color:var(--cyan) !important; }}
         .modebar-container .modebar {{ background:transparent !important; }}
@@ -518,6 +574,35 @@ if _missing_new_cols:
         ' — the related filters and charts are hidden.</span></div>',
         unsafe_allow_html=True,
     )
+
+
+def character_donut(frame: pd.DataFrame, label_col: str, order, colors):
+    """Donut for a small categorical split. The record count rides in the
+    legend entry rather than in the slice, so a 3% slice needs no callout and
+    nothing has to be rotated to fit."""
+    counts = (frame[label_col].value_counts()
+              .reindex([v for v in order if v in set(frame[label_col].unique())])
+              .dropna())
+    if not len(counts):
+        return None, 0
+    total = int(counts.sum())
+    legend_names = {k: f"{k} · {int(v):,}" for k, v in counts.items()}
+    plot_df = pd.DataFrame({
+        "status": [legend_names[k] for k in counts.index],
+        "count": counts.values,
+    })
+    fig = px.pie(
+        plot_df, names="status", values="count", template=PLOTLY_TEMPLATE,
+        color="status", hole=0.52,
+        color_discrete_map={legend_names[k]: colors[k] for k in counts.index},
+        category_orders={"status": [legend_names[k] for k in counts.index]},
+    )
+    fig.add_annotation(text=f"<b>{total:,}</b><br><span style='font-size:10px'>records</span>",
+                       showarrow=False, font=dict(size=15, color=ON_DARK))
+    fig.update_layout(legend=dict(orientation="v", yanchor="top", y=1.0, x=1.0,
+                                  xanchor="left", font=dict(size=11)),
+                      margin=dict(t=10, l=4, r=4, b=4))
+    return fig, total
 
 
 def share_table(frame: pd.DataFrame, dim: str, flag: str, label: str) -> pd.DataFrame:
@@ -971,46 +1056,48 @@ if TECH_COL or TRAD_COL:
     st.divider()
     st.subheader("Enterprise Character — Tech-Enabled & Traditional / Non-Traditional")
 
-    ec1, ec2, ec3 = st.columns(3)
+    ec1, ec2 = st.columns(2)
 
     with ec1:
         st.caption("Tech-enabled split")
         if TECH_COL:
-            tc = fdf[TECH_LBL].value_counts().reindex(
-                [v for v in TECH_ORDER if v in fdf[TECH_LBL].unique()]).reset_index()
-            tc.columns = ["status", "count"]
-            fig = px.pie(tc, names="status", values="count", template=PLOTLY_TEMPLATE,
-                         color="status", color_discrete_map=TECH_COLORS, hole=0.42)
-            fig.update_traces(textinfo="percent+label")
-            show(fig)
+            fig, _ = character_donut(fdf, TECH_LBL, TECH_ORDER, TECH_COLORS)
+            if fig is not None:
+                show(fig, height=300)
+            else:
+                st.caption("No records for the current filter selection.")
 
     with ec2:
         st.caption("Traditional vs. non-traditional split")
         if TRAD_COL:
-            rc = fdf[TRAD_LBL].value_counts().reindex(
-                [v for v in TRAD_ORDER if v in fdf[TRAD_LBL].unique()]).reset_index()
-            rc.columns = ["status", "count"]
-            fig = px.pie(rc, names="status", values="count", template=PLOTLY_TEMPLATE,
-                         color="status", color_discrete_map=TRAD_COLORS, hole=0.42)
-            fig.update_traces(textinfo="percent+label")
-            show(fig)
+            fig, _ = character_donut(fdf, TRAD_LBL, TRAD_ORDER, TRAD_COLORS)
+            if fig is not None:
+                show(fig, height=300)
+            else:
+                st.caption("No records for the current filter selection.")
 
-    with ec3:
-        st.caption("Tech-enabled × traditional (record counts)")
-        if TECH_COL and TRAD_COL:
-            cross = pd.crosstab(fdf[TECH_LBL], fdf[TRAD_LBL])
-            cross = cross.reindex(index=[v for v in TECH_ORDER if v in cross.index],
-                                  columns=[v for v in TRAD_ORDER if v in cross.columns])
-            if cross.size:
-                fig = px.imshow(cross, template=PLOTLY_TEMPLATE, aspect="auto",
-                                color_continuous_scale=[[0, "#14304A"], [1, CYAN]],
-                                labels=dict(x="", y="", color="Enterprises"))
-                show(fig)
+    # Full width: a 3x3 contingency grid squeezed into a one-third column has
+    # cells too narrow to hold their own numbers.
+    st.caption("Tech-enabled × traditional (record counts)")
+    if TECH_COL and TRAD_COL:
+        cross = pd.crosstab(fdf[TECH_LBL], fdf[TRAD_LBL])
+        cross = cross.reindex(index=[v for v in TECH_ORDER if v in cross.index],
+                              columns=[v for v in TRAD_ORDER if v in cross.columns])
+        if cross.size:
+            fig = px.imshow(cross, template=PLOTLY_TEMPLATE, aspect="auto",
+                            color_continuous_scale=[[0, "#14304A"], [1, CYAN]],
+                            labels=dict(x="", y="", color="Enterprises"))
+            fig.update_xaxes(side="bottom", tickangle=0)
+            fig.update_yaxes(tickangle=0)
+            fig.update_traces(
+                hovertemplate="%{y} &times; %{x}<br>%{z:,} enterprises<extra></extra>")
+            show(fig, height=260)
 
     st.caption(
+        "Cell labels are abbreviated (19.5k = 19,531) to fit; hover for the exact count. "
         "The two classifications are not independent: non-traditional enterprises are far more "
-        "likely to be tech-enabled, and the cells on the right quantify that overlap. Records "
-        "blank on one field are blank on both in the current extract."
+        "likely to be tech-enabled, and the grid quantifies that overlap. Records blank on one "
+        "field are blank on both in the current extract."
     )
 
     cc1, cc2 = st.columns(2)
@@ -1123,8 +1210,11 @@ if {"district1", "sector1"}.issubset(fdf.columns):
             pivot, template=PLOTLY_TEMPLATE, color_continuous_scale=[[0, "#14304A"], [1, CYAN]], aspect="auto",
             labels=dict(x="Sector", y="District", color="Entrepreneurs"),
         )
+        # One tick per district — Plotly otherwise labels every other row when
+        # the axis is crowded, which leaves half the rows unidentifiable.
         fig.update_layout(xaxis_tickangle=-35)
-        show(fig)
+        fig.update_yaxes(dtick=1, tickfont=dict(size=10))
+        show(fig, height=max(340, 26 * len(pivot) + 120))
         st.caption("Darker cells = more entrepreneurs in that district-sector combination. "
                    "Useful for spotting which districts are concentrated in a narrow set of sectors "
                    "vs. diversified.")
